@@ -7,6 +7,10 @@ export function ReviewHistory() {
   const entries = useTimelineStore((s) => s.entries);
   const [selectedTag, setSelectedTag] = useState<ReviewTag | null>(null);
 
+  const totalReviewCount = useMemo(() => {
+    return Object.values(entries).filter((e) => e.review).length;
+  }, [entries]);
+
   const reviewedEntries = useMemo(() => {
     let filtered = Object.values(entries).filter((e) => e.review && (
       e.review.target || e.review.gap || e.review.reason || e.review.lesson
@@ -42,7 +46,7 @@ export function ReviewHistory() {
           className={`review-filter-btn ${selectedTag === null ? 'active' : ''}`}
           onClick={() => setSelectedTag(null)}
         >
-          全部 ({Object.values(entries).filter((e) => e.review).length})
+          全部 ({totalReviewCount})
         </button>
         {allTags.map(({ tag, count }) => (
           <button

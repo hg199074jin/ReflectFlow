@@ -82,7 +82,7 @@ export function createOpenAICompatibleProvider(settings: LLMSettings): LLMProvid
       return raw
         .split('\n')
         .map((line) => line.trim())
-        .filter((line) => line.length > 0 && line.includes('？') || line.includes('?'));
+        .filter((line) => line.length > 0 && (line.includes('？') || line.includes('?')));
     },
 
     async generateWeekSummary(entries: Entry[], weekStart: string): Promise<string> {

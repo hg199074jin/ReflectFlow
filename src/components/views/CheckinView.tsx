@@ -16,9 +16,7 @@ export function CheckinView() {
   const setReflection = useTimelineStore((s) => s.setReflection);
   const setAIQuestions = useTimelineStore((s) => s.setAIQuestions);
   const setAIInFlight = useTimelineStore((s) => s.setAIInFlight);
-  const aiInFlight = useTimelineStore((s) => s.aiInFlight[today]);
 
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const bulletCount = entry
@@ -27,7 +25,7 @@ export function CheckinView() {
 
   const handleGenerateQuestions = async () => {
     if (!entry) return;
-    setGenerating(true);
+    setAIInFlight('questions-' + today, true);
     setError(null);
     try {
       const provider = createOpenAICompatibleProvider(settings.llm);
@@ -36,13 +34,13 @@ export function CheckinView() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate');
     } finally {
-      setGenerating(false);
+      setAIInFlight('questions-' + today, false);
     }
   };
 
   const handleGenerateReflection = async () => {
     if (!entry) return;
-    setAIInFlight(today, true);
+    setAIInFlight('reflection-' + today, true);
     setError(null);
     try {
       const provider = createOpenAICompatibleProvider(settings.llm);
@@ -51,9 +49,12 @@ export function CheckinView() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate');
     } finally {
-      setAIInFlight(today, false);
+      setAIInFlight('reflection-' + today, false);
     }
   };
+
+  const isGeneratingQuestions = useTimelineStore((s) => s.aiInFlight['questions-' + today]);
+  const isGeneratingReflection = useTimelineStore((s) => s.aiInFlight['reflection-' + today]);
 
   return (
     <div className="checkin-view">
@@ -101,7 +102,7 @@ export function CheckinView() {
           <Button
             variant="secondary"
             onClick={handleGenerateQuestions}
-            loading={generating}
+            loading={isGeneratingQuestions}
             disabled={!entry || bulletCount === 0}
           >
             生成引导提问
@@ -109,7 +110,7 @@ export function CheckinView() {
           <Button
             variant="secondary"
             onClick={handleGenerateReflection}
-            loading={aiInFlight}
+            loading={isGeneratingReflection}
             disabled={!entry || bulletCount === 0}
           >
             {entry?.ai?.reflection ? '重新生成复盘' : 'AI生成复盘'}

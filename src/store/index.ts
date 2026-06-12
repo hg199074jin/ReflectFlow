@@ -3,10 +3,11 @@ import { createId } from '../lib/ids';
 import { parseBulletText } from '../lib/text';
 import { getWeekRange } from '../lib/date';
 import type { Entry, Settings, Category, ViewMode, AppMode, DailyReview, WeeklyReview } from '../lib/schema';
-import { saveEntry, loadEntries, loadSettings, saveSettings } from './persistence';
+import { saveEntry, loadEntries, loadSettings, saveSettings, saveWeeklyReview, loadWeeklyReviews } from './persistence';
 
 interface AppState {
   entries: Record<string, Entry>;
+  weeklyReviews: Record<string, WeeklyReview>;
   settings: Settings;
   selectedMonth: string;
   view: ViewMode;
@@ -26,10 +27,12 @@ interface AppState {
   setWeekSummary: (weekStart: string, content: string) => void;
   setProjects: (projects: Array<{ name: string; bulletRefs: Array<{ entryId: string; bulletId: string }> }>) => void;
   updateDailyReview: (date: string, review: Partial<DailyReview>) => void;
+  updateWeeklyReview: (weekStart: string, review: Partial<WeeklyReview>) => void;
 }
 
 export const useTimelineStore = create<AppState>((set, get) => ({
   entries: {},
+  weeklyReviews: {},
   settings: {
     llm: { provider: 'openai-compatible', apiKey: '', model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
     export: { folderStructure: 'year-month', includeAI: true },
@@ -40,12 +43,12 @@ export const useTimelineStore = create<AppState>((set, get) => ({
   aiInFlight: {},
 
   initialize: async () => {
-    const [entries, settings] = await Promise.all([loadEntries(), loadSettings()]);
+    const [entries, settings, weeklyReviews] = await Promise.all([loadEntries(), loadSettings(), loadWeeklyReviews()]);
     const entriesMap: Record<string, Entry> = {};
     for (const e of entries) {
       entriesMap[e.date] = e;
     }
-    set({ entries: entriesMap, settings });
+    set({ entries: entriesMap, settings, weeklyReviews });
   },
 
   upsertEntryText: (date, category, text) => {
@@ -126,6 +129,7 @@ export const useTimelineStore = create<AppState>((set, get) => ({
           id: createId(),
           date,
           bullets: { work: [], study: [], side: [] },
+          ai: {},
           review,
           createdAt: now,
           updatedAt: now,
@@ -196,6 +200,19 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     }
 
     set({ entries: updated });
+  },
+
+  updateWeeklyReview: (weekStart, review) => {
+    const { weeklyReviews } = get();
+    const existing = weeklyReviews[weekStart];
+
+    const updated: WeeklyReview = existing
+      ? { ...existing, ...review, weekStart }
+      : { weekStart, ...review };
+
+    const newWeeklyReviews = { ...weeklyReviews, [weekStart]: updated };
+    set({ weeklyReviews: newWeeklyReviews });
+    saveWeeklyReview(updated);
   },
 }));
 

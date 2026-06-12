@@ -1,5 +1,4 @@
-import { useMemo } from 'react';
-import { useTimelineStore, getMonthReviewStats } from '../../store';
+import { getMonthReviewStats } from '../../store';
 import { REVIEW_TAG_LABELS } from '../../lib/schema';
 import type { ReviewTag } from '../../lib/schema';
 
@@ -8,11 +7,9 @@ interface MonthlyReviewReportProps {
 }
 
 export function MonthlyReviewReport({ month }: MonthlyReviewReportProps) {
-  const entries = useTimelineStore((s) => s.entries);
-
-  const stats = useMemo(() => {
-    return getMonthReviewStats(month);
-  }, [month, entries]);
+  // 每次渲染时调用 getMonthReviewStats，它会从 store 读取最新数据
+  // 由于 zustand 的响应式机制，当 entries 变化时组件会重新渲染
+  const stats = getMonthReviewStats(month);
 
   const completionRate = stats.totalDays > 0
     ? Math.round((stats.reviewDays / stats.totalDays) * 100)

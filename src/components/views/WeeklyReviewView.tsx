@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTimelineStore, getWeeklyReviewData } from '../../store';
+import { useTimelineStore } from '../../store';
 import { Button } from '../primitives/Button';
 import { MarkdownEditor } from '../primitives/MarkdownEditor';
 import { createOpenAICompatibleProvider } from '../../services/llm/openaiCompatible';
@@ -24,14 +24,16 @@ const WEEKLY_SECTIONS: Array<{ key: keyof WeeklyReview; label: string; placehold
 
 export function WeeklyReviewView({ weekStart }: WeeklyReviewViewProps) {
   const settings = useTimelineStore((s) => s.settings);
-  const [review, setReview] = useState<WeeklyReview>(() => getWeeklyReviewData(weekStart));
+  const weeklyReviews = useTimelineStore((s) => s.weeklyReviews);
+  const updateWeeklyReview = useTimelineStore((s) => s.updateWeeklyReview);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const range = getWeekRange(weekStart);
+  const review = weeklyReviews[weekStart] || { weekStart };
 
   const handleUpdate = (key: keyof WeeklyReview, value: string) => {
-    setReview((prev) => ({ ...prev, [key]: value }));
+    updateWeeklyReview(weekStart, { [key]: value });
   };
 
   const handleTagToggle = (tag: ReviewTag) => {
@@ -39,7 +41,7 @@ export function WeeklyReviewView({ weekStart }: WeeklyReviewViewProps) {
     const newTags = currentTags.includes(tag)
       ? currentTags.filter((t) => t !== tag)
       : [...currentTags, tag];
-    setReview((prev) => ({ ...prev, tags: newTags }));
+    updateWeeklyReview(weekStart, { tags: newTags });
   };
 
   const handleGenerateSummary = async () => {
@@ -52,7 +54,7 @@ export function WeeklyReviewView({ weekStart }: WeeklyReviewViewProps) {
         (e) => e.date >= range.start && e.date <= range.end
       );
       const summary = await provider.generateWeekSummary(weekEntries, weekStart);
-      setReview((prev) => ({ ...prev, summary }));
+      updateWeeklyReview(weekStart, { summary });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate');
     } finally {
