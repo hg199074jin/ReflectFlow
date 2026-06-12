@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useTimelineStore } from './store';
 import { MonthNav } from './components/nav/MonthNav';
 import { TimelineCardsView } from './components/views/TimelineCardsView';
+import { TimelineGanttView } from './components/views/TimelineGanttView';
+import { StatsPanel } from './components/views/StatsPanel';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { Button } from './components/primitives/Button';
 
@@ -27,8 +29,8 @@ export default function App() {
       <MonthNav />
       <div className="view-container">
         {view === 'cards' && <TimelineCardsView />}
-        {view === 'gantt' && <p>Gantt view coming soon</p>}
-        {view === 'stats' && <p>Stats view coming soon</p>}
+        {view === 'gantt' && <TimelineGanttView />}
+        {view === 'stats' && <StatsPanel />}
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </main>
