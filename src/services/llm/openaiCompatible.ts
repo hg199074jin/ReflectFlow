@@ -11,6 +11,16 @@ interface ChatResponse {
   }>;
 }
 
+/** Remove <think>...</think> tags and other reasoning artifacts from LLM response */
+function cleanResponse(content: string): string {
+  // Remove <think>...</think> blocks
+  let cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '');
+  // Remove <think>...</think> blocks (some models use different casing)
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  // Trim whitespace
+  return cleaned.trim();
+}
+
 async function callAPI(settings: LLMSettings, messages: Array<{ role: string; content: string }>): Promise<string> {
   const url = `${settings.baseUrl.replace(/\/$/, '')}/chat/completions`;
 
@@ -42,7 +52,7 @@ async function callAPI(settings: LLMSettings, messages: Array<{ role: string; co
     if (typeof content !== 'string') {
       throw new SchemaError('Invalid response structure');
     }
-    return content;
+    return cleanResponse(content);
   } catch (err) {
     if (err instanceof LLMError) throw err;
     if (err instanceof TypeError && err.message.includes('fetch')) {
@@ -57,7 +67,7 @@ export function createOpenAICompatibleProvider(settings: LLMSettings): LLMProvid
     async generateReflection(entry: Entry): Promise<string> {
       const prompt = buildReflectionPrompt(entry);
       return callAPI(settings, [
-        { role: 'system', content: 'You summarize a private daily work journal. Be concise and structured.' },
+        { role: 'system', content: '你是一个工作日志总结助手。直接输出总结内容，不要包含任何思考过程、推理步骤或标签。' },
         { role: 'user', content: prompt },
       ]);
     },
@@ -65,7 +75,7 @@ export function createOpenAICompatibleProvider(settings: LLMSettings): LLMProvid
     async generateWeekSummary(entries: Entry[], weekStart: string): Promise<string> {
       const prompt = buildWeekSummaryPrompt(entries, weekStart);
       return callAPI(settings, [
-        { role: 'system', content: 'You summarize a private weekly work journal. Be concise and structured.' },
+        { role: 'system', content: '你是一个工作日志周总结助手。直接输出总结内容，不要包含任何思考过程、推理步骤或标签。' },
         { role: 'user', content: prompt },
       ]);
     },
@@ -73,7 +83,7 @@ export function createOpenAICompatibleProvider(settings: LLMSettings): LLMProvid
     async classifyProjects(bullets: ClassifiableBullet[]): Promise<Array<{ name: string; bulletIds: string[] }>> {
       const prompt = buildProjectClassificationPrompt(bullets);
       const raw = await callAPI(settings, [
-        { role: 'system', content: 'You classify work journal bullets into projects. Return only valid JSON.' },
+        { role: 'system', content: '你是一个工作日志分类助手。直接返回JSON，不要包含任何思考过程、推理步骤或标签。' },
         { role: 'user', content: prompt },
       ]);
 
