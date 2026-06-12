@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTimelineStore } from './store';
-import { MonthNav } from './components/nav/MonthNav';
 import { CheckinView } from './components/views/CheckinView';
-import { TimelineCardsView } from './components/views/TimelineCardsView';
+import { TimelineView } from './components/views/TimelineView';
 import { TimelineGanttView } from './components/views/TimelineGanttView';
 import { StatsPanel } from './components/views/StatsPanel';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
@@ -11,7 +10,7 @@ import { Button } from './components/primitives/Button';
 import type { AppMode } from './lib/schema';
 
 export default function App() {
-  const { initialize, view, appMode, setAppMode } = useTimelineStore();
+  const { initialize, view, setView, appMode, setAppMode } = useTimelineStore();
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
@@ -56,9 +55,28 @@ export default function App() {
         <CheckinView />
       ) : (
         <>
-          <MonthNav />
+          <div className="browse-tabs">
+            <button
+              className={`browse-tab ${view === 'cards' ? 'active' : ''}`}
+              onClick={() => setView('cards')}
+            >
+              Timeline
+            </button>
+            <button
+              className={`browse-tab ${view === 'gantt' ? 'active' : ''}`}
+              onClick={() => setView('gantt')}
+            >
+              Gantt
+            </button>
+            <button
+              className={`browse-tab ${view === 'stats' ? 'active' : ''}`}
+              onClick={() => setView('stats')}
+            >
+              Stats
+            </button>
+          </div>
           <div className="view-container">
-            {view === 'cards' && <TimelineCardsView />}
+            {view === 'cards' && <TimelineView />}
             {view === 'gantt' && <TimelineGanttView />}
             {view === 'stats' && <StatsPanel />}
           </div>

@@ -725,3 +725,84 @@ body {
   min-height: 80px;
   font-size: 0.9375rem;
 }
+
+/* Browse Tabs */
+.browse-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  padding: 0.25rem;
+  background: #f3f4f6;
+  border-radius: 6px;
+}
+
+.browse-tab {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  color: #6b7280;
+}
+
+.browse-tab:hover {
+  background: white;
+  color: #374151;
+}
+
+.browse-tab.active {
+  background: white;
+  color: #111827;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+/* Timeline View */
+.timeline-view {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.timeline-month-section {
+  margin-bottom: 1rem;
+}
+
+.timeline-month-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.timeline-month-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.timeline-month-count {
+  font-size: 0.8125rem;
+  color: #9ca3af;
+}
+
+.timeline-month-days {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+}
+
+.timeline-empty p {
+  font-size: 0.9375rem;
+}
