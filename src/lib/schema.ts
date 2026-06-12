@@ -54,6 +54,7 @@ export const settingsSchema = z.object({
 export type Settings = z.infer<typeof settingsSchema>;
 
 export type ViewMode = 'cards' | 'gantt' | 'stats';
+export type AppMode = 'checkin' | 'browse';
 
 export interface ClassifiableBullet {
   entryId: string;

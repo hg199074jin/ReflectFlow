@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createId } from '../lib/ids';
 import { parseBulletText } from '../lib/text';
 import { getWeekRange } from '../lib/date';
-import type { Entry, Settings, Category, ViewMode } from '../lib/schema';
+import type { Entry, Settings, Category, ViewMode, AppMode } from '../lib/schema';
 import { saveEntry, loadEntries, loadSettings, saveSettings } from './persistence';
 
 interface AppState {
@@ -10,12 +10,14 @@ interface AppState {
   settings: Settings;
   selectedMonth: string;
   view: ViewMode;
+  appMode: AppMode;
   aiInFlight: Record<string, boolean>;
 
   // Actions
   initialize: () => Promise<void>;
   upsertEntryText: (date: string, category: Category, text: string) => void;
   setView: (view: ViewMode) => void;
+  setAppMode: (mode: AppMode) => void;
   setSelectedMonth: (month: string) => void;
   saveSettings: (settings: Settings) => Promise<void>;
   setAIInFlight: (key: string, inFlight: boolean) => void;
@@ -32,6 +34,7 @@ export const useTimelineStore = create<AppState>((set, get) => ({
   },
   selectedMonth: new Date().toISOString().slice(0, 7),
   view: 'cards',
+  appMode: 'checkin',
   aiInFlight: {},
 
   initialize: async () => {
@@ -64,6 +67,7 @@ export const useTimelineStore = create<AppState>((set, get) => ({
   },
 
   setView: (view) => set({ view }),
+  setAppMode: (mode) => set({ appMode: mode }),
   setSelectedMonth: (month) => set({ selectedMonth: month }),
 
   saveSettings: async (settings) => {
