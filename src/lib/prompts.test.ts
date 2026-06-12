@@ -13,8 +13,8 @@ describe('buildReflectionPrompt', () => {
   it('skips empty categories', () => {
     const entry = makeEntry({ bullets: { work: [{ id: 'b1', text: 'task' }], study: [], side: [] } });
     const prompt = buildReflectionPrompt(entry);
-    expect(prompt).not.toContain('Study:');
-    expect(prompt).not.toContain('Side projects:');
+    expect(prompt).not.toContain('学习：');
+    expect(prompt).not.toContain('副业：');
   });
 });
 

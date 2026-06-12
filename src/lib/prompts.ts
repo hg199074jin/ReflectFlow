@@ -6,59 +6,59 @@ export function buildReflectionPrompt(entry: Entry): string {
   const sections: string[] = [];
 
   if (entry.bullets.work.length > 0) {
-    sections.push(`Work:\n${formatBulletText(entry.bullets.work)}`);
+    sections.push(`工作：\n${formatBulletText(entry.bullets.work)}`);
   }
   if (entry.bullets.study.length > 0) {
-    sections.push(`Study:\n${formatBulletText(entry.bullets.study)}`);
+    sections.push(`学习：\n${formatBulletText(entry.bullets.study)}`);
   }
   if (entry.bullets.side.length > 0) {
-    sections.push(`Side projects:\n${formatBulletText(entry.bullets.side)}`);
+    sections.push(`副业：\n${formatBulletText(entry.bullets.side)}`);
   }
 
-  return `Date: ${entry.date}
+  return `日期：${entry.date}
 
-Today's activities:
+今日事项：
 ${sections.join('\n\n')}
 
-Write a brief one-paragraph reflection on this day. Focus on what was accomplished, what was learned, and any notable observations. Be concise and constructive.`;
+请用一段话总结今天的收获和观察。简明扼要，重点突出完成了什么、学到了什么、有什么值得注意的地方。不要用套话，写得实在一点。`;
 }
 
 /** Build prompt for weekly summary */
 export function buildWeekSummaryPrompt(entries: Entry[], weekStart: string): string {
   const daySummaries = entries.map((e) => {
     const bullets = [...e.bullets.work, ...e.bullets.study, ...e.bullets.side];
-    if (bullets.length === 0) return `${e.date}: (no entries)`;
-    return `${e.date}:\n${bullets.map((b) => `- ${b.text}`).join('\n')}`;
+    if (bullets.length === 0) return `${e.date}：（无记录）`;
+    return `${e.date}：\n${bullets.map((b) => `- ${b.text}`).join('\n')}`;
   });
 
-  return `Week starting ${weekStart}:
+  return `本周起始日期：${weekStart}
 
 ${daySummaries.join('\n\n')}
 
-Write a structured weekly summary. Highlight key accomplishments, patterns, and areas for improvement. Be concise.`;
+请写一段结构化的周总结。列出本周主要成果、发现的规律、以及可以改进的地方。简洁明了。`;
 }
 
 /** Build prompt for project classification */
 export function buildProjectClassificationPrompt(bullets: ClassifiableBullet[]): string {
-  const bulletList = bullets.map((b) => `[${b.bulletId}] (${b.category}, ${b.date}): ${b.text}`).join('\n');
+  const bulletList = bullets.map((b) => `[${b.bulletId}]（${b.category}，${b.date}）：${b.text}`).join('\n');
 
-  return `Here are bullet points from a work journal, each with a unique ID:
+  return `以下是工作日志中的要点，每个都有唯一ID：
 
 ${bulletList}
 
-Group these bullets into projects. Return ONLY valid JSON in this exact format:
+请将这些要点归类到不同的项目中。只返回如下格式的JSON：
 {
   "projects": [
     {
-      "name": "Project Name",
-      "bulletIds": ["bullet-id-1", "bullet-id-2"]
+      "name": "项目名称",
+      "bulletIds": ["要点ID-1", "要点ID-2"]
     }
   ]
 }
 
-Rules:
-- Every bullet ID must appear exactly once across all projects
-- Project names should be descriptive and concise
-- Group related bullets together based on topic/context
-- Return ONLY the JSON, no other text`;
+规则：
+- 每个要点ID必须且只能出现在一个项目中
+- 项目名称要简洁明了
+- 根据内容和上下文将相关要点分组
+- 只返回JSON，不要有其他内容`;
 }
