@@ -1,11 +1,19 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import { entrySchema, settingsSchema, weeklyReviewSchema, type Entry, type Settings, type WeeklyReview } from '../lib/schema';
+import {
+  entrySchema, settingsSchema, weeklyReviewSchema,
+  goalSchema, generatedReportSchema, insightSchema,
+  type Entry, type Settings, type WeeklyReview,
+  type Goal, type GeneratedReport, type Insight,
+} from '../lib/schema';
 
 const DB_NAME = 'timeline-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const ENTRIES_STORE = 'entries';
 const SETTINGS_STORE = 'settings';
 const WEEKLY_REVIEWS_STORE = 'weeklyReviews';
+const GOALS_STORE = 'goals';
+const REPORTS_STORE = 'reports';
+const INSIGHTS_STORE = 'insights';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -22,6 +30,18 @@ function getDB() {
         // Version 2: add weeklyReviews store
         if (oldVersion < 2 && !db.objectStoreNames.contains(WEEKLY_REVIEWS_STORE)) {
           db.createObjectStore(WEEKLY_REVIEWS_STORE, { keyPath: 'weekStart' });
+        }
+        // Version 3: add goals, reports, insights stores
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains(GOALS_STORE)) {
+            db.createObjectStore(GOALS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(REPORTS_STORE)) {
+            db.createObjectStore(REPORTS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(INSIGHTS_STORE)) {
+            db.createObjectStore(INSIGHTS_STORE, { keyPath: 'id' });
+          }
         }
       },
     });
@@ -101,13 +121,97 @@ export async function saveWeeklyReview(review: WeeklyReview): Promise<void> {
   await db.put(WEEKLY_REVIEWS_STORE, review);
 }
 
+// Goals
+export async function loadGoals(): Promise<Record<string, Goal>> {
+  const db = await getDB();
+  const raw = await db.getAll(GOALS_STORE);
+  const result: Record<string, Goal> = {};
+  for (const item of raw) {
+    try {
+      const validated = goalSchema.parse(item);
+      result[validated.id] = validated;
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
+}
+
+export async function saveGoal(goal: Goal): Promise<void> {
+  const db = await getDB();
+  await db.put(GOALS_STORE, goal);
+}
+
+export async function deleteGoal(goalId: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(GOALS_STORE, goalId);
+}
+
+// Reports
+export async function loadReports(): Promise<Record<string, GeneratedReport>> {
+  const db = await getDB();
+  const raw = await db.getAll(REPORTS_STORE);
+  const result: Record<string, GeneratedReport> = {};
+  for (const item of raw) {
+    try {
+      const validated = generatedReportSchema.parse(item);
+      result[validated.id] = validated;
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
+}
+
+export async function saveReport(report: GeneratedReport): Promise<void> {
+  const db = await getDB();
+  await db.put(REPORTS_STORE, report);
+}
+
+export async function deleteReport(reportId: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(REPORTS_STORE, reportId);
+}
+
+// Insights
+export async function loadInsights(): Promise<Record<string, Insight>> {
+  const db = await getDB();
+  const raw = await db.getAll(INSIGHTS_STORE);
+  const result: Record<string, Insight> = {};
+  for (const item of raw) {
+    try {
+      const validated = insightSchema.parse(item);
+      result[validated.id] = validated;
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
+}
+
+export async function saveInsight(insight: Insight): Promise<void> {
+  const db = await getDB();
+  await db.put(INSIGHTS_STORE, insight);
+}
+
+export async function clearInsights(): Promise<void> {
+  const db = await getDB();
+  await db.clear(INSIGHTS_STORE);
+}
+
 export async function clearAllData(): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction([ENTRIES_STORE, SETTINGS_STORE, WEEKLY_REVIEWS_STORE], 'readwrite');
+  const tx = db.transaction(
+    [ENTRIES_STORE, SETTINGS_STORE, WEEKLY_REVIEWS_STORE, GOALS_STORE, REPORTS_STORE, INSIGHTS_STORE],
+    'readwrite'
+  );
   await Promise.all([
     tx.objectStore(ENTRIES_STORE).clear(),
     tx.objectStore(SETTINGS_STORE).clear(),
     tx.objectStore(WEEKLY_REVIEWS_STORE).clear(),
+    tx.objectStore(GOALS_STORE).clear(),
+    tx.objectStore(REPORTS_STORE).clear(),
+    tx.objectStore(INSIGHTS_STORE).clear(),
     tx.done,
   ]);
 }

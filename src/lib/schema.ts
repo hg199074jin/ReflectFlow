@@ -107,7 +107,7 @@ export const settingsSchema = z.object({
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
-export type ViewMode = 'cards' | 'gantt' | 'stats' | 'review';
+export type ViewMode = 'cards' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights';
 export type AppMode = 'checkin' | 'browse';
 
 export interface ClassifiableBullet {
@@ -116,4 +116,104 @@ export interface ClassifiableBullet {
   category: Category;
   bulletId: string;
   text: string;
+}
+
+// ========================================
+// Pro Upgrade Types
+// ========================================
+
+// 证据引用
+export const evidenceRefSchema = z.object({
+  entryId: z.string(),
+  date: z.string(),
+  category: categorySchema,
+  bulletId: z.string(),
+  text: z.string(),
+});
+export type EvidenceRef = z.infer<typeof evidenceRefSchema>;
+
+// 目标
+export const goalPeriodSchema = z.enum(['week', 'month']);
+export type GoalPeriod = z.infer<typeof goalPeriodSchema>;
+
+export const goalStatusSchema = z.enum(['active', 'done', 'paused', 'dropped']);
+export type GoalStatus = z.infer<typeof goalStatusSchema>;
+
+export const goalSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  period: goalPeriodSchema,
+  startDate: z.string(),
+  endDate: z.string(),
+  status: goalStatusSchema,
+  linkedBullets: z.array(projectRefSchema),
+  notes: z.string().optional(),
+  ai: z.object({
+    progressSummary: z.string().optional(),
+    risk: z.string().optional(),
+    nextAction: z.string().optional(),
+  }).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Goal = z.infer<typeof goalSchema>;
+
+// 报告
+export const reportSectionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  evidenceRefs: z.array(evidenceRefSchema),
+});
+export type ReportSection = z.infer<typeof reportSectionSchema>;
+
+export const generatedReportSchema = z.object({
+  id: z.string(),
+  templateId: z.string(),
+  title: z.string(),
+  period: z.enum(['week', 'month']),
+  startDate: z.string(),
+  endDate: z.string(),
+  content: z.string(),
+  sections: z.array(reportSectionSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type GeneratedReport = z.infer<typeof generatedReportSchema>;
+
+// 洞察
+export const insightTypeSchema = z.enum([
+  'goal-drift',
+  'stalled-theme',
+  'recurring-problem',
+  'success-pattern',
+  'review-quality',
+  'activity-distribution',
+]);
+export type InsightType = z.infer<typeof insightTypeSchema>;
+
+export const insightSeveritySchema = z.enum(['info', 'warning', 'critical']);
+export type InsightSeverity = z.infer<typeof insightSeveritySchema>;
+
+export const insightSchema = z.object({
+  id: z.string(),
+  type: insightTypeSchema,
+  title: z.string(),
+  summary: z.string(),
+  severity: insightSeveritySchema,
+  periodStart: z.string(),
+  periodEnd: z.string(),
+  evidenceRefs: z.array(evidenceRefSchema),
+  createdAt: z.string(),
+});
+export type Insight = z.infer<typeof insightSchema>;
+
+// 报告模板
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  period: 'week' | 'month';
+  description: string;
+  sections: Array<{ id: string; title: string }>;
+  requiresEvidence: boolean;
 }

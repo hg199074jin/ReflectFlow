@@ -2,12 +2,24 @@ import { create } from 'zustand';
 import { createId } from '../lib/ids';
 import { parseBulletText } from '../lib/text';
 import { getWeekRange } from '../lib/date';
-import type { Entry, Settings, Category, ViewMode, AppMode, DailyReview, WeeklyReview } from '../lib/schema';
-import { saveEntry, loadEntries, loadSettings, saveSettings, saveWeeklyReview, loadWeeklyReviews } from './persistence';
+import type {
+  Entry, Settings, Category, ViewMode, AppMode,
+  DailyReview, WeeklyReview, Goal, GeneratedReport, Insight,
+} from '../lib/schema';
+import {
+  saveEntry, loadEntries, loadSettings, saveSettings,
+  saveWeeklyReview, loadWeeklyReviews,
+  saveGoal, loadGoals, deleteGoal as deleteGoalFromDB,
+  saveReport, loadReports, deleteReport as deleteReportFromDB,
+  loadInsights, clearInsights as clearInsightsFromDB,
+} from './persistence';
 
 interface AppState {
   entries: Record<string, Entry>;
   weeklyReviews: Record<string, WeeklyReview>;
+  goals: Record<string, Goal>;
+  reports: Record<string, GeneratedReport>;
+  insights: Record<string, Insight>;
   settings: Settings;
   selectedMonth: string;
   view: ViewMode;
@@ -28,11 +40,24 @@ interface AppState {
   setProjects: (projects: Array<{ name: string; bulletRefs: Array<{ entryId: string; bulletId: string }> }>) => void;
   updateDailyReview: (date: string, review: Partial<DailyReview>) => void;
   updateWeeklyReview: (weekStart: string, review: Partial<WeeklyReview>) => void;
+
+  // Pro actions
+  upsertGoal: (goal: Goal) => Promise<void>;
+  deleteGoal: (goalId: string) => Promise<void>;
+  linkBulletToGoal: (goalId: string, ref: { entryId: string; bulletId: string }) => Promise<void>;
+  unlinkBulletFromGoal: (goalId: string, bulletId: string) => Promise<void>;
+  saveGeneratedReport: (report: GeneratedReport) => Promise<void>;
+  deleteGeneratedReport: (reportId: string) => Promise<void>;
+  saveInsights: (insights: Insight[]) => Promise<void>;
+  clearInsights: () => Promise<void>;
 }
 
 export const useTimelineStore = create<AppState>((set, get) => ({
   entries: {},
   weeklyReviews: {},
+  goals: {},
+  reports: {},
+  insights: {},
   settings: {
     llm: { provider: 'openai-compatible', apiKey: '', model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
     export: { folderStructure: 'year-month', includeAI: true },
@@ -43,12 +68,18 @@ export const useTimelineStore = create<AppState>((set, get) => ({
   aiInFlight: {},
 
   initialize: async () => {
-    const [entries, settings, weeklyReviews] = await Promise.all([loadEntries(), loadSettings(), loadWeeklyReviews()]);
+    const [entries, settings, weeklyReviews, goals, reports, insights] = await Promise.all([
+      loadEntries(), loadSettings(), loadWeeklyReviews(),
+      loadGoals(), loadReports(), loadInsights(),
+    ]);
     const entriesMap: Record<string, Entry> = {};
     for (const e of entries) {
       entriesMap[e.date] = e;
     }
-    set({ entries: entriesMap, settings, weeklyReviews });
+    set({
+      entries: entriesMap, settings, weeklyReviews,
+      goals, reports, insights,
+    });
   },
 
   upsertEntryText: (date, category, text) => {
@@ -139,6 +170,19 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     saveEntry(entry);
   },
 
+  updateWeeklyReview: (weekStart, review) => {
+    const { weeklyReviews } = get();
+    const existing = weeklyReviews[weekStart];
+
+    const updated: WeeklyReview = existing
+      ? { ...existing, ...review, weekStart }
+      : { weekStart, ...review };
+
+    const newWeeklyReviews = { ...weeklyReviews, [weekStart]: updated };
+    set({ weeklyReviews: newWeeklyReviews });
+    saveWeeklyReview(updated);
+  },
+
   setWeekSummary: (weekStart, content) => {
     const { entries } = get();
     const range = getWeekRange(weekStart);
@@ -202,19 +246,91 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     set({ entries: updated });
   },
 
-  updateWeeklyReview: (weekStart, review) => {
-    const { weeklyReviews } = get();
-    const existing = weeklyReviews[weekStart];
+  // Pro actions
+  upsertGoal: async (goal) => {
+    const { goals } = get();
+    set({ goals: { ...goals, [goal.id]: goal } });
+    await saveGoal(goal);
+  },
 
-    const updated: WeeklyReview = existing
-      ? { ...existing, ...review, weekStart }
-      : { weekStart, ...review };
+  deleteGoal: async (goalId) => {
+    const { goals } = get();
+    const { [goalId]: _, ...rest } = goals;
+    set({ goals: rest });
+    await deleteGoalFromDB(goalId);
+  },
 
-    const newWeeklyReviews = { ...weeklyReviews, [weekStart]: updated };
-    set({ weeklyReviews: newWeeklyReviews });
-    saveWeeklyReview(updated);
+  linkBulletToGoal: async (goalId, ref) => {
+    const { goals } = get();
+    const goal = goals[goalId];
+    if (!goal) return;
+
+    // Deduplicate
+    const exists = goal.linkedBullets.some(
+      (b) => b.entryId === ref.entryId && b.bulletId === ref.bulletId
+    );
+    if (exists) return;
+
+    const updated = {
+      ...goal,
+      linkedBullets: [...goal.linkedBullets, ref],
+      updatedAt: new Date().toISOString(),
+    };
+    set({ goals: { ...goals, [goalId]: updated } });
+    await saveGoal(updated);
+  },
+
+  unlinkBulletFromGoal: async (goalId, bulletId) => {
+    const { goals } = get();
+    const goal = goals[goalId];
+    if (!goal) return;
+
+    const updated = {
+      ...goal,
+      linkedBullets: goal.linkedBullets.filter((b) => b.bulletId !== bulletId),
+      updatedAt: new Date().toISOString(),
+    };
+    set({ goals: { ...goals, [goalId]: updated } });
+    await saveGoal(updated);
+  },
+
+  saveGeneratedReport: async (report) => {
+    const { reports } = get();
+    set({ reports: { ...reports, [report.id]: report } });
+    await saveReport(report);
+  },
+
+  deleteGeneratedReport: async (reportId) => {
+    const { reports } = get();
+    const { [reportId]: _, ...rest } = reports;
+    set({ reports: rest });
+    await deleteReportFromDB(reportId);
+  },
+
+  saveInsights: async (newInsights) => {
+    const { insights } = get();
+    const updated = { ...insights };
+    for (const insight of newInsights) {
+      updated[insight.id] = insight;
+    }
+    set({ insights: updated });
+    // Save each insight
+    for (const insight of newInsights) {
+      await saveInsightToDB(insight);
+    }
+  },
+
+  clearInsights: async () => {
+    set({ insights: {} });
+    await clearInsightsFromDB();
   },
 }));
+
+// Helper to save insight
+async function saveInsightToDB(insight: Insight): Promise<void> {
+  const { saveInsight } = await import('./persistence');
+  await saveInsight(insight);
+}
 
 /** Get entry by date key */
 export function getEntryByDate(date: string): Entry | undefined {
@@ -294,4 +410,28 @@ export function getMonthReviewStats(month: string) {
     tags,
     avgQuality: Math.round(avgQuality * 10) / 10,
   };
+}
+
+/** Get goals for a period */
+export function getGoalsForPeriod(period: 'week' | 'month', startDate: string, endDate: string): Goal[] {
+  const { goals } = useTimelineStore.getState();
+  return Object.values(goals).filter(
+    (g) => g.period === period && g.startDate >= startDate && g.endDate <= endDate
+  );
+}
+
+/** Get reports for a period */
+export function getReportsForPeriod(startDate: string, endDate: string): GeneratedReport[] {
+  const { reports } = useTimelineStore.getState();
+  return Object.values(reports).filter(
+    (r) => r.startDate >= startDate && r.endDate <= endDate
+  );
+}
+
+/** Get insights for a period */
+export function getInsightsForPeriod(startDate: string, endDate: string): Insight[] {
+  const { insights } = useTimelineStore.getState();
+  return Object.values(insights).filter(
+    (i) => i.periodStart >= startDate && i.periodEnd <= endDate
+  );
 }

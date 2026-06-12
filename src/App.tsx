@@ -7,10 +7,13 @@ import { StatsPanel } from './components/views/StatsPanel';
 import { ReviewHistory } from './components/views/ReviewHistory';
 import { WeeklyReviewView } from './components/views/WeeklyReviewView';
 import { MonthlyReviewReport } from './components/views/MonthlyReviewReport';
+import { GoalsView } from './features/goals/GoalsView';
+import { ReportsView } from './features/reports/ReportsView';
+import { InsightsView } from './features/insights/InsightsView';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { ExportDialog } from './components/dialogs/ExportDialog';
 import { Button } from './components/primitives/Button';
-import type { AppMode } from './lib/schema';
+import type { AppMode, ViewMode } from './lib/schema';
 import { getWeekRange, toDateKey } from './lib/date';
 
 export default function App() {
@@ -34,6 +37,16 @@ export default function App() {
 
   const today = toDateKey(new Date());
   const currentWeekStart = getWeekRange(today).start;
+
+  const browseTabs: { key: ViewMode; label: string }[] = [
+    { key: 'cards', label: 'Timeline' },
+    { key: 'gantt', label: 'Gantt' },
+    { key: 'stats', label: 'Stats' },
+    { key: 'review', label: '复盘' },
+    { key: 'goals', label: 'Goals' },
+    { key: 'reports', label: 'Reports' },
+    { key: 'insights', label: 'Insights' },
+  ];
 
   return (
     <main className="app-shell">
@@ -63,30 +76,15 @@ export default function App() {
       ) : (
         <>
           <div className="browse-tabs">
-            <button
-              className={`browse-tab ${view === 'cards' ? 'active' : ''}`}
-              onClick={() => setView('cards')}
-            >
-              Timeline
-            </button>
-            <button
-              className={`browse-tab ${view === 'gantt' ? 'active' : ''}`}
-              onClick={() => setView('gantt')}
-            >
-              Gantt
-            </button>
-            <button
-              className={`browse-tab ${view === 'stats' ? 'active' : ''}`}
-              onClick={() => setView('stats')}
-            >
-              Stats
-            </button>
-            <button
-              className={`browse-tab ${view === 'review' ? 'active' : ''}`}
-              onClick={() => setView('review')}
-            >
-              复盘
-            </button>
+            {browseTabs.map((tab) => (
+              <button
+                key={tab.key}
+                className={`browse-tab ${view === tab.key ? 'active' : ''}`}
+                onClick={() => setView(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
           <div className="view-container">
             {view === 'cards' && <TimelineView />}
@@ -105,6 +103,9 @@ export default function App() {
                 <ReviewHistory />
               </div>
             )}
+            {view === 'goals' && <GoalsView />}
+            {view === 'reports' && <ReportsView />}
+            {view === 'insights' && <InsightsView />}
           </div>
         </>
       )}
