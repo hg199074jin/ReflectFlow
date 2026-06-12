@@ -1,7 +1,7 @@
 import type { LLMProvider, LLMSettings } from './types';
 import { LLMError, AuthError, RateLimitError, NetworkError, SchemaError } from './types';
 import type { Entry, ClassifiableBullet } from '../../lib/schema';
-import { buildReflectionPrompt, buildWeekSummaryPrompt, buildProjectClassificationPrompt } from '../../lib/prompts';
+import { buildReflectionPrompt, buildReflectionQuestionsPrompt, buildWeekSummaryPrompt, buildProjectClassificationPrompt } from '../../lib/prompts';
 
 interface ChatResponse {
   choices: Array<{
@@ -67,9 +67,22 @@ export function createOpenAICompatibleProvider(settings: LLMSettings): LLMProvid
     async generateReflection(entry: Entry): Promise<string> {
       const prompt = buildReflectionPrompt(entry);
       return callAPI(settings, [
-        { role: 'system', content: '你是一个工作日志总结助手。直接输出总结内容，不要包含任何思考过程、推理步骤或标签。' },
+        { role: 'system', content: '你是一个工作日志复盘助手。直接输出复盘总结，不要包含任何思考过程、推理步骤或标签。' },
         { role: 'user', content: prompt },
       ]);
+    },
+
+    async generateReflectionQuestions(entry: Entry): Promise<string[]> {
+      const prompt = buildReflectionQuestionsPrompt(entry);
+      const raw = await callAPI(settings, [
+        { role: 'system', content: '你是一个复盘引导助手。生成引导深度思考的问题，每行一个问题。直接返回问题，不要有其他内容。' },
+        { role: 'user', content: prompt },
+      ]);
+
+      return raw
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && line.includes('？') || line.includes('?'));
     },
 
     async generateWeekSummary(entries: Entry[], weekStart: string): Promise<string> {

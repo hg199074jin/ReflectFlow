@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createId } from '../lib/ids';
 import { parseBulletText } from '../lib/text';
 import { getWeekRange } from '../lib/date';
-import type { Entry, Settings, Category, ViewMode, AppMode } from '../lib/schema';
+import type { Entry, Settings, Category, ViewMode, AppMode, DailyReview, WeeklyReview } from '../lib/schema';
 import { saveEntry, loadEntries, loadSettings, saveSettings } from './persistence';
 
 interface AppState {
@@ -22,8 +22,10 @@ interface AppState {
   saveSettings: (settings: Settings) => Promise<void>;
   setAIInFlight: (key: string, inFlight: boolean) => void;
   setReflection: (date: string, content: string) => void;
+  setAIQuestions: (date: string, questions: string[]) => void;
   setWeekSummary: (weekStart: string, content: string) => void;
   setProjects: (projects: Array<{ name: string; bulletRefs: Array<{ entryId: string; bulletId: string }> }>) => void;
+  updateDailyReview: (date: string, review: Partial<DailyReview>) => void;
 }
 
 export const useTimelineStore = create<AppState>((set, get) => ({
@@ -96,12 +98,48 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     saveEntry(updated);
   },
 
+  setAIQuestions: (date, questions) => {
+    const { entries } = get();
+    const entry = entries[date];
+    if (!entry) return;
+    const updated = {
+      ...entry,
+      ai: { ...entry.ai, questions },
+      updatedAt: new Date().toISOString(),
+    };
+    set({ entries: { ...entries, [date]: updated } });
+    saveEntry(updated);
+  },
+
+  updateDailyReview: (date, review) => {
+    const { entries } = get();
+    const existing = entries[date];
+    const now = new Date().toISOString();
+
+    const entry: Entry = existing
+      ? {
+          ...existing,
+          review: { ...existing.review, ...review },
+          updatedAt: now,
+        }
+      : {
+          id: createId(),
+          date,
+          bullets: { work: [], study: [], side: [] },
+          review,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+    set({ entries: { ...entries, [date]: entry } });
+    saveEntry(entry);
+  },
+
   setWeekSummary: (weekStart, content) => {
     const { entries } = get();
     const range = getWeekRange(weekStart);
     const updated = { ...entries };
 
-    // Update all entries in the week
     for (const [date, entry] of Object.entries(updated)) {
       if (date >= range.start && date <= range.end) {
         const newEntry = {
@@ -121,7 +159,6 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     const { entries } = get();
     const updated = { ...entries };
 
-    // Build a map of bulletId -> entryId for quick lookup
     const bulletToEntry = new Map<string, string>();
     for (const entry of Object.values(entries)) {
       for (const bullets of Object.values(entry.bullets)) {
@@ -131,13 +168,11 @@ export const useTimelineStore = create<AppState>((set, get) => ({
       }
     }
 
-    // Group bullet refs by entry
     const entryProjects = new Map<string, typeof projects>();
     for (const project of projects) {
       for (const ref of project.bulletRefs) {
         const entryId = ref.entryId;
         if (!entryProjects.has(entryId)) entryProjects.set(entryId, []);
-        // Find or create project entry for this entry
         const existing = entryProjects.get(entryId)!.find((p) => p.name === project.name);
         if (existing) {
           existing.bulletRefs.push(ref);
@@ -147,7 +182,6 @@ export const useTimelineStore = create<AppState>((set, get) => ({
       }
     }
 
-    // Update each entry with its projects
     for (const [entryId, entryProjectList] of entryProjects) {
       const entry = Object.values(updated).find((e) => e.id === entryId) as Entry | undefined;
       if (entry) {
@@ -201,4 +235,46 @@ export function getClassifiableBullets(month: string) {
     }
   }
   return bullets;
+}
+
+/** Get weekly review data by aggregating entries */
+export function getWeeklyReviewData(weekStart: string): WeeklyReview {
+  const entries = getEntriesForWeek(weekStart);
+  const allBullets = entries.flatMap((e) => [...e.bullets.work, ...e.bullets.study, ...e.bullets.side]);
+
+  return {
+    weekStart,
+    completed: allBullets.map((b) => `- ${b.text}`).join('\n'),
+  };
+}
+
+/** Get review statistics for a month */
+export function getMonthReviewStats(month: string) {
+  const entries = getEntriesForMonth(month);
+  const reviewDays = entries.filter((e) => e.review && (
+    e.review.target || e.review.gap || e.review.reason || e.review.lesson
+  )).length;
+
+  const tags: Record<string, number> = {};
+  for (const entry of entries) {
+    if (entry.review?.tags) {
+      for (const tag of entry.review.tags) {
+        tags[tag] = (tags[tag] || 0) + 1;
+      }
+    }
+  }
+
+  const qualities = entries
+    .filter((e) => e.review?.quality)
+    .map((e) => e.review!.quality!);
+  const avgQuality = qualities.length > 0
+    ? qualities.reduce((a, b) => a + b, 0) / qualities.length
+    : 0;
+
+  return {
+    totalDays: entries.length,
+    reviewDays,
+    tags,
+    avgQuality: Math.round(avgQuality * 10) / 10,
+  };
 }

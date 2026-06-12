@@ -2,6 +2,7 @@ import type { ClassifiableBullet, Entry, Settings } from '../../lib/schema';
 
 export interface LLMProvider {
   generateReflection(entry: Entry): Promise<string>;
+  generateReflectionQuestions(entry: Entry): Promise<string[]>;
   generateWeekSummary(entries: Entry[], weekStart: string): Promise<string>;
   classifyProjects(bullets: ClassifiableBullet[]): Promise<Array<{ name: string; bulletIds: string[] }>>;
 }

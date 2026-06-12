@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "MCP(*)",
+      "Files(*)",
+      "Network(*)",
+      "Tool(*)",
+      "System(*)",
+      "mcp__MiniMax__web_search"
+    ],
+    "deny": []
+  }
+}

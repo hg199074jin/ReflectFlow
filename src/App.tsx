@@ -4,13 +4,17 @@ import { CheckinView } from './components/views/CheckinView';
 import { TimelineView } from './components/views/TimelineView';
 import { TimelineGanttView } from './components/views/TimelineGanttView';
 import { StatsPanel } from './components/views/StatsPanel';
+import { ReviewHistory } from './components/views/ReviewHistory';
+import { WeeklyReviewView } from './components/views/WeeklyReviewView';
+import { MonthlyReviewReport } from './components/views/MonthlyReviewReport';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { ExportDialog } from './components/dialogs/ExportDialog';
 import { Button } from './components/primitives/Button';
 import type { AppMode } from './lib/schema';
+import { getWeekRange, toDateKey } from './lib/date';
 
 export default function App() {
-  const { initialize, view, setView, appMode, setAppMode } = useTimelineStore();
+  const { initialize, view, setView, appMode, setAppMode, selectedMonth } = useTimelineStore();
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
@@ -27,6 +31,9 @@ export default function App() {
     { key: 'checkin', label: '录入', icon: '✏️' },
     { key: 'browse', label: '查看', icon: '📊' },
   ];
+
+  const today = toDateKey(new Date());
+  const currentWeekStart = getWeekRange(today).start;
 
   return (
     <main className="app-shell">
@@ -74,11 +81,30 @@ export default function App() {
             >
               Stats
             </button>
+            <button
+              className={`browse-tab ${view === 'review' ? 'active' : ''}`}
+              onClick={() => setView('review')}
+            >
+              复盘
+            </button>
           </div>
           <div className="view-container">
             {view === 'cards' && <TimelineView />}
             {view === 'gantt' && <TimelineGanttView />}
             {view === 'stats' && <StatsPanel />}
+            {view === 'review' && (
+              <div className="review-container">
+                <div className="review-row">
+                  <div className="review-col">
+                    <WeeklyReviewView weekStart={currentWeekStart} />
+                  </div>
+                  <div className="review-col">
+                    <MonthlyReviewReport month={selectedMonth} />
+                  </div>
+                </div>
+                <ReviewHistory />
+              </div>
+            )}
           </div>
         </>
       )}
