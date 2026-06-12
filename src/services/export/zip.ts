@@ -8,7 +8,6 @@ export async function createMarkdownZip(
   settings: Settings['export'],
 ): Promise<Blob> {
   const zip = new JSZip();
-  const journal = zip.folder('journal')!;
 
   for (const entry of entries) {
     const content = entryToMarkdown(entry, { includeAI: settings.includeAI });

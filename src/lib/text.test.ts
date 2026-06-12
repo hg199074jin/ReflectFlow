@@ -5,21 +5,21 @@ describe('parseBulletText', () => {
   it('parses lines into bullets', () => {
     const bullets = parseBulletText('task one\ntask two\ntask three');
     expect(bullets).toHaveLength(3);
-    expect(bullets[0].text).toBe('task one');
-    expect(bullets[1].text).toBe('task two');
-    expect(bullets[2].text).toBe('task three');
+    expect(bullets[0]!.text).toBe('task one');
+    expect(bullets[1]!.text).toBe('task two');
+    expect(bullets[2]!.text).toBe('task three');
   });
 
   it('strips leading dashes', () => {
     const bullets = parseBulletText('- task one\n- task two');
     expect(bullets).toHaveLength(2);
-    expect(bullets[0].text).toBe('task one');
-    expect(bullets[1].text).toBe('task two');
+    expect(bullets[0]!.text).toBe('task one');
+    expect(bullets[1]!.text).toBe('task two');
   });
 
   it('trims whitespace', () => {
     const bullets = parseBulletText('  task one  \n  task two  ');
-    expect(bullets[0].text).toBe('task one');
+    expect(bullets[0]!.text).toBe('task one');
   });
 
   it('skips empty lines', () => {
@@ -34,7 +34,7 @@ describe('parseBulletText', () => {
 
   it('assigns unique ids', () => {
     const bullets = parseBulletText('a\nb');
-    expect(bullets[0].id).not.toBe(bullets[1].id);
+    expect(bullets[0]!.id).not.toBe(bullets[1]!.id);
   });
 });
 

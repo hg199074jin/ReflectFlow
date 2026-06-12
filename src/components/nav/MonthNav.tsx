@@ -7,12 +7,12 @@ export function MonthNav() {
   const { selectedMonth, setSelectedMonth, view, setView } = useTimelineStore();
 
   const handlePrev = () => {
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const [y, m] = selectedMonth.split('-').map(Number) as [number, number];
     setSelectedMonth(m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`);
   };
 
   const handleNext = () => {
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const [y, m] = selectedMonth.split('-').map(Number) as [number, number];
     setSelectedMonth(m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`);
   };
 

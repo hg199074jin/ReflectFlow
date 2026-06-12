@@ -13,7 +13,7 @@ export function StatsPanel() {
   // Calculate monthly totals
   const monthEntries = getMonthDays(selectedMonth)
     .map((d) => entriesMap[d])
-    .filter(Boolean);
+    .filter((e): e is NonNullable<typeof e> => !!e);
 
   const totals = {
     work: 0,

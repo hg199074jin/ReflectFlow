@@ -23,7 +23,7 @@ describe('useTimelineStore', () => {
       const entry = getEntryByDate('2026-06-13');
       expect(entry).toBeTruthy();
       expect(entry!.bullets.work).toHaveLength(2);
-      expect(entry!.bullets.work[0].text).toBe('task one');
+      expect(entry!.bullets.work[0]!.text).toBe('task one');
     });
 
     it('updates existing entry', () => {
@@ -31,7 +31,7 @@ describe('useTimelineStore', () => {
       useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'new');
       const entry = getEntryByDate('2026-06-13');
       expect(entry!.bullets.work).toHaveLength(1);
-      expect(entry!.bullets.work[0].text).toBe('new');
+      expect(entry!.bullets.work[0]!.text).toBe('new');
     });
 
     it('preserves other categories', () => {
@@ -86,12 +86,12 @@ describe('useTimelineStore', () => {
 
       useTimelineStore.getState().setProjects([{
         name: 'Project X',
-        bulletRefs: [{ entryId: entry.id, bulletId: bulletIds[0] }],
+        bulletRefs: [{ entryId: entry.id, bulletId: bulletIds[0]! }],
       }]);
 
       const updated = getEntryByDate('2026-06-13')!;
       expect(updated.ai?.projects).toHaveLength(1);
-      expect(updated.ai?.projects![0].name).toBe('Project X');
+      expect(updated.ai?.projects![0]!.name).toBe('Project X');
     });
   });
 });

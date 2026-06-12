@@ -100,12 +100,13 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     // Update all entries in the week
     for (const [date, entry] of Object.entries(updated)) {
       if (date >= range.start && date <= range.end) {
-        updated[date] = {
+        const newEntry = {
           ...entry,
           ai: { ...entry.ai, weekSummary: { weekStart, content } },
           updatedAt: new Date().toISOString(),
         };
-        saveEntry(updated[date]);
+        updated[date] = newEntry;
+        saveEntry(newEntry);
       }
     }
 
@@ -144,14 +145,15 @@ export const useTimelineStore = create<AppState>((set, get) => ({
 
     // Update each entry with its projects
     for (const [entryId, entryProjectList] of entryProjects) {
-      const entry = Object.values(updated).find((e) => e.id === entryId);
+      const entry = Object.values(updated).find((e) => e.id === entryId) as Entry | undefined;
       if (entry) {
-        updated[entry.date] = {
+        const newEntry = {
           ...entry,
           ai: { ...entry.ai, projects: entryProjectList },
           updatedAt: new Date().toISOString(),
         };
-        saveEntry(updated[entry.date]);
+        updated[entry.date] = newEntry;
+        saveEntry(newEntry);
       }
     }
 
@@ -182,7 +184,7 @@ export function getClassifiableBullets(month: string) {
   const entries = getEntriesForMonth(month);
   const bullets: Array<{ entryId: string; date: string; category: Category; bulletId: string; text: string }> = [];
   for (const entry of entries) {
-    for (const [category, categoryBullets] of Object.entries(entry.bullets) as [Category, typeof entry.bullets.work][]) {
+    for (const [category, categoryBullets] of Object.entries(entry.bullets) as [Category, Array<{ id: string; text: string }>][] ) {
       for (const bullet of categoryBullets) {
         bullets.push({
           entryId: entry.id,

@@ -1,4 +1,4 @@
-import { startOfWeek, endOfWeek, eachDayOfInterval, format, parse, isSameDay, subDays } from 'date-fns';
+import { startOfWeek, endOfWeek, parse, subDays } from 'date-fns';
 import type { Entry } from './schema';
 
 /** Convert a Date to local 'YYYY-MM-DD' string */

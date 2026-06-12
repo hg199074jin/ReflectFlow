@@ -3,8 +3,9 @@ import { describe, it, expect } from 'vitest';
 import App from './App';
 
 describe('App', () => {
-  it('renders the app shell', () => {
+  it('renders the app shell', async () => {
     render(<App />);
-    expect(screen.getByText('Daily Check-in Timeline')).toBeInTheDocument();
+    // Wait for async initialization
+    expect(await screen.findByText('Daily Check-in Timeline')).toBeInTheDocument();
   });
 });

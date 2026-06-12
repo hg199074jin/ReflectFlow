@@ -44,9 +44,9 @@ export function AISection({ date }: AISectionProps) {
         <span className="ai-section-title">AI Reflection</span>
         <div className="ai-section-actions">
           {entry.ai?.reflection && (
-            <Button variant="ghost" size="sm" onClick={handleCopy}>Copy</Button>
+            <Button variant="ghost" onClick={handleCopy}>Copy</Button>
           )}
-          <Button variant="secondary" size="sm" onClick={handleGenerate} loading={aiInFlight}>
+          <Button variant="secondary" onClick={handleGenerate} loading={aiInFlight}>
             {entry.ai?.reflection ? 'Regenerate' : 'Generate'}
           </Button>
         </div>

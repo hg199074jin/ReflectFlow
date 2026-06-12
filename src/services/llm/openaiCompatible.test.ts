@@ -44,7 +44,7 @@ describe('createOpenAICompatibleProvider', () => {
       const provider = createOpenAICompatibleProvider(settings);
       await provider.generateReflection(makeEntry());
 
-      const [, opts] = mockFetch.mock.calls[0];
+      const [, opts] = mockFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
       expect(opts.headers['Authorization']).toBe('Bearer sk-test-key');
     });
 
@@ -57,7 +57,7 @@ describe('createOpenAICompatibleProvider', () => {
       const provider = createOpenAICompatibleProvider({ ...settings, apiKey: '' });
       await provider.generateReflection(makeEntry());
 
-      const [, opts] = mockFetch.mock.calls[0];
+      const [, opts] = mockFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
       expect(opts.headers['Authorization']).toBeUndefined();
     });
 
@@ -112,7 +112,7 @@ describe('createOpenAICompatibleProvider', () => {
       ]);
 
       expect(result).toHaveLength(2);
-      expect(result[0].name).toBe('Project A');
+      expect(result[0]!.name).toBe('Project A');
     });
 
     it('throws SchemaError on invalid JSON', async () => {

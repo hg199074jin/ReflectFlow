@@ -28,7 +28,11 @@ export const aiDataSchema = z.object({
 export const entrySchema = z.object({
   id: z.string(),
   date: z.string(),
-  bullets: z.record(categorySchema, z.array(bulletSchema)),
+  bullets: z.object({
+    work: z.array(bulletSchema),
+    study: z.array(bulletSchema),
+    side: z.array(bulletSchema),
+  }),
   ai: aiDataSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

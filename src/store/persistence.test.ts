@@ -13,8 +13,8 @@ describe('persistence', () => {
       await saveEntry(entry);
       const loaded = await loadEntries();
       expect(loaded).toHaveLength(1);
-      expect(loaded[0].id).toBe(entry.id);
-      expect(loaded[0].date).toBe(entry.date);
+      expect(loaded[0]!.id).toBe(entry.id);
+      expect(loaded[0]!.date).toBe(entry.date);
     });
 
     it('saves multiple entries', async () => {
@@ -29,7 +29,7 @@ describe('persistence', () => {
       await saveEntry(makeEntry({ date: '2026-06-13', bullets: { work: [{ id: 'b2', text: 'new' }], study: [], side: [] } }));
       const loaded = await loadEntries();
       expect(loaded).toHaveLength(1);
-      expect(loaded[0].bullets.work[0].text).toBe('new');
+      expect(loaded[0]!.bullets.work[0]!.text).toBe('new');
     });
 
     it('deletes an entry', async () => {
@@ -38,7 +38,7 @@ describe('persistence', () => {
       await deleteEntry('2026-06-12');
       const loaded = await loadEntries();
       expect(loaded).toHaveLength(1);
-      expect(loaded[0].date).toBe('2026-06-13');
+      expect(loaded[0]!.date).toBe('2026-06-13');
     });
 
     it('returns empty array for empty DB', async () => {
