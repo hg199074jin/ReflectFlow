@@ -1,10 +1,11 @@
 import { useTimelineStore } from '../../store';
 import { getMonthDays, calculateStreak, toDateKey } from '../../lib/date';
 import { HeatmapCalendar } from '../stats/HeatmapCalendar';
-import { Button } from '../primitives/Button';
+import { ThemeManagementPanel } from '../../features/projects/ThemeManagementPanel';
 
 export function StatsPanel() {
   const { selectedMonth, entries } = useTimelineStore();
+
   const entriesMap = entries;
   const entriesList = Object.values(entriesMap);
   const today = toDateKey(new Date());
@@ -57,9 +58,7 @@ export function StatsPanel() {
       <h3>Activity Heatmap</h3>
       <HeatmapCalendar month={selectedMonth} entries={entriesMap} />
 
-      <div style={{ marginTop: '1rem' }}>
-        <Button variant="secondary">Classify Projects</Button>
-      </div>
+      <ThemeManagementPanel />
     </div>
   );
 }

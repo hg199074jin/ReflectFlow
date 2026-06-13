@@ -32,7 +32,7 @@ describe('TimelineGanttView', () => {
       bulletRefs: [{ entryId: entry.id, bulletId: entry.bullets.work[0]!.id }],
     }]);
     render(<TimelineGanttView />);
-    expect(screen.getByText('Project X')).toBeInTheDocument();
+    expect(screen.getAllByText('Project X').length).toBeGreaterThan(0);
   });
 
   it('renders classify projects button', () => {

@@ -133,6 +133,11 @@ body {
   white-space: nowrap;
 }
 
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -2301,4 +2306,147 @@ body {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+/* ========================================
+   Review Coach Panel
+   ======================================== */
+.review-coach-panel {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.review-coach-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.review-coach-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.review-coach-error {
+  font-size: 0.8125rem;
+  color: #C47A6A;
+  font-style: italic;
+  margin-bottom: var(--space-md);
+}
+
+.review-coach-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.review-coach-question {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-light);
+}
+
+.review-coach-question-text {
+  flex: 1;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  font-style: italic;
+  margin: 0;
+}
+
+.review-coach-question-actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.review-coach-btn {
+  padding: var(--space-xs);
+  font-size: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.review-coach-btn:hover {
+  color: var(--color-text);
+}
+
+/* ========================================
+   Theme Management Panel
+   ======================================== */
+.theme-management-panel {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+
+.theme-management-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+}
+
+.theme-management-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.theme-management-error {
+  font-size: 0.8125rem;
+  color: #C47A6A;
+  font-style: italic;
+  margin-bottom: var(--space-md);
+}
+
+.theme-management-empty {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.theme-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.theme-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+}
+
+.theme-name {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.theme-rename-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
 }

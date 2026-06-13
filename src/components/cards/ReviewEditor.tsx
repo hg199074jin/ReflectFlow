@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTimelineStore } from '../../store';
 import { MarkdownEditor } from '../primitives/MarkdownEditor';
+import { ReviewCoachPanel } from '../../features/coach/ReviewCoachPanel';
 import type { DailyReview, ReviewTag } from '../../lib/schema';
 import { REVIEW_TAG_LABELS } from '../../lib/schema';
 
@@ -99,6 +100,8 @@ export function ReviewEditor({ date }: ReviewEditorProps) {
               ))}
             </div>
           </div>
+
+          {entry && <ReviewCoachPanel entry={entry} />}
         </div>
       )}
     </div>
