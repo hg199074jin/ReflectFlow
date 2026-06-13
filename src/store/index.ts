@@ -11,7 +11,7 @@ import {
   saveWeeklyReview, loadWeeklyReviews,
   saveGoal, loadGoals, deleteGoal as deleteGoalFromDB,
   saveReport, loadReports, deleteReport as deleteReportFromDB,
-  loadInsights, clearInsights as clearInsightsFromDB,
+  saveInsight, loadInsights, clearInsights as clearInsightsFromDB,
 } from './persistence';
 
 interface AppState {
@@ -316,7 +316,7 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     set({ insights: updated });
     // Save each insight
     for (const insight of newInsights) {
-      await saveInsightToDB(insight);
+      await saveInsight(insight);
     }
   },
 
@@ -325,12 +325,6 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     await clearInsightsFromDB();
   },
 }));
-
-// Helper to save insight
-async function saveInsightToDB(insight: Insight): Promise<void> {
-  const { saveInsight } = await import('./persistence');
-  await saveInsight(insight);
-}
 
 /** Get entry by date key */
 export function getEntryByDate(date: string): Entry | undefined {
