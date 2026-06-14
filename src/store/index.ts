@@ -5,13 +5,17 @@ import { getWeekRange } from '../lib/date';
 import type {
   Entry, Settings, Category, ViewMode, AppMode,
   DailyReview, WeeklyReview, Goal, GeneratedReport, Insight,
+  ReviewCase, PreviewPlan, Principle,
 } from '../lib/schema';
 import {
-  saveEntry, loadEntries, loadSettings, saveSettings,
+  saveEntry, loadEntries, deleteEntry as deleteEntryFromDB, loadSettings, saveSettings,
   saveWeeklyReview, loadWeeklyReviews,
   saveGoal, loadGoals, deleteGoal as deleteGoalFromDB,
   saveReport, loadReports, deleteReport as deleteReportFromDB,
   saveInsight, loadInsights, clearInsights as clearInsightsFromDB,
+  saveReviewCase, loadReviewCases, deleteReviewCase as deleteReviewCaseFromDB,
+  savePreviewPlan, loadPreviewPlans, deletePreviewPlan as deletePreviewPlanFromDB,
+  savePrinciple, loadPrinciples, deletePrinciple as deletePrincipleFromDB,
 } from './persistence';
 
 interface AppState {
@@ -20,6 +24,9 @@ interface AppState {
   goals: Record<string, Goal>;
   reports: Record<string, GeneratedReport>;
   insights: Record<string, Insight>;
+  reviewCases: Record<string, ReviewCase>;
+  previewPlans: Record<string, PreviewPlan>;
+  principles: Record<string, Principle>;
   settings: Settings;
   selectedMonth: string;
   view: ViewMode;
@@ -29,6 +36,7 @@ interface AppState {
   // Actions
   initialize: () => Promise<void>;
   upsertEntryText: (date: string, category: Category, text: string) => void;
+  deleteEntry: (date: string) => Promise<void>;
   setView: (view: ViewMode) => void;
   setAppMode: (mode: AppMode) => void;
   setSelectedMonth: (month: string) => void;
@@ -36,6 +44,7 @@ interface AppState {
   setAIInFlight: (key: string, inFlight: boolean) => void;
   setReflection: (date: string, content: string) => void;
   setAIQuestions: (date: string, questions: string[]) => void;
+  setQuestionAnswers: (date: string, answers: string[]) => void;
   setWeekSummary: (weekStart: string, content: string) => void;
   setProjects: (projects: Array<{ name: string; bulletRefs: Array<{ entryId: string; bulletId: string }> }>) => void;
   updateDailyReview: (date: string, review: Partial<DailyReview>) => void;
@@ -50,6 +59,15 @@ interface AppState {
   deleteGeneratedReport: (reportId: string) => Promise<void>;
   saveInsights: (insights: Insight[]) => Promise<void>;
   clearInsights: () => Promise<void>;
+
+  // Plus Review Method actions
+  upsertReviewCase: (reviewCase: ReviewCase) => Promise<void>;
+  deleteReviewCase: (reviewCaseId: string) => Promise<void>;
+  upsertPreviewPlan: (previewPlan: PreviewPlan) => Promise<void>;
+  deletePreviewPlan: (previewPlanId: string) => Promise<void>;
+  upsertPrinciple: (principle: Principle) => Promise<void>;
+  deletePrinciple: (principleId: string) => Promise<void>;
+  promoteConclusionToPrinciple: (reviewCaseId: string, conclusionId: string) => Promise<void>;
 }
 
 export const useTimelineStore = create<AppState>((set, get) => ({
@@ -58,6 +76,9 @@ export const useTimelineStore = create<AppState>((set, get) => ({
   goals: {},
   reports: {},
   insights: {},
+  reviewCases: {},
+  previewPlans: {},
+  principles: {},
   settings: {
     llm: { provider: 'openai-compatible', apiKey: '', model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
     export: { folderStructure: 'year-month', includeAI: true },
@@ -68,9 +89,10 @@ export const useTimelineStore = create<AppState>((set, get) => ({
   aiInFlight: {},
 
   initialize: async () => {
-    const [entries, settings, weeklyReviews, goals, reports, insights] = await Promise.all([
+    const [entries, settings, weeklyReviews, goals, reports, insights, reviewCases, previewPlans, principles] = await Promise.all([
       loadEntries(), loadSettings(), loadWeeklyReviews(),
       loadGoals(), loadReports(), loadInsights(),
+      loadReviewCases(), loadPreviewPlans(), loadPrinciples(),
     ]);
     const entriesMap: Record<string, Entry> = {};
     for (const e of entries) {
@@ -78,7 +100,7 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     }
     set({
       entries: entriesMap, settings, weeklyReviews,
-      goals, reports, insights,
+      goals, reports, insights, reviewCases, previewPlans, principles,
     });
   },
 
@@ -89,17 +111,30 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     const now = new Date().toISOString();
 
     const entry: Entry = existing
-      ? { ...existing, bullets: { ...existing.bullets, [category]: bullets }, updatedAt: now }
+      ? {
+          ...existing,
+          bullets: { ...existing.bullets, [category]: bullets },
+          rawText: { ...existing.rawText, [category]: text },
+          updatedAt: now,
+        }
       : {
           id: createId(),
           date,
           bullets: { work: [], study: [], side: [], [category]: bullets },
+          rawText: { [category]: text },
           createdAt: now,
           updatedAt: now,
         };
 
     set({ entries: { ...entries, [date]: entry } });
     saveEntry(entry);
+  },
+
+  deleteEntry: async (date) => {
+    const { entries } = get();
+    const { [date]: _, ...rest } = entries;
+    set({ entries: rest });
+    await deleteEntryFromDB(date);
   },
 
   setView: (view) => set({ view }),
@@ -139,6 +174,19 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     const updated = {
       ...entry,
       ai: { ...entry.ai, questions },
+      updatedAt: new Date().toISOString(),
+    };
+    set({ entries: { ...entries, [date]: updated } });
+    saveEntry(updated);
+  },
+
+  setQuestionAnswers: (date, answers) => {
+    const { entries } = get();
+    const entry = entries[date];
+    if (!entry) return;
+    const updated = {
+      ...entry,
+      ai: { ...entry.ai, questionAnswers: answers },
       updatedAt: new Date().toISOString(),
     };
     set({ entries: { ...entries, [date]: updated } });
@@ -324,6 +372,73 @@ export const useTimelineStore = create<AppState>((set, get) => ({
     set({ insights: {} });
     await clearInsightsFromDB();
   },
+
+  // Plus Review Method actions
+  upsertReviewCase: async (reviewCase) => {
+    const { reviewCases } = get();
+    set({ reviewCases: { ...reviewCases, [reviewCase.id]: reviewCase } });
+    await saveReviewCase(reviewCase);
+  },
+
+  deleteReviewCase: async (reviewCaseId) => {
+    const { reviewCases } = get();
+    const { [reviewCaseId]: _, ...rest } = reviewCases;
+    set({ reviewCases: rest });
+    await deleteReviewCaseFromDB(reviewCaseId);
+  },
+
+  upsertPreviewPlan: async (previewPlan) => {
+    const { previewPlans } = get();
+    set({ previewPlans: { ...previewPlans, [previewPlan.id]: previewPlan } });
+    await savePreviewPlan(previewPlan);
+  },
+
+  deletePreviewPlan: async (previewPlanId) => {
+    const { previewPlans } = get();
+    const { [previewPlanId]: _, ...rest } = previewPlans;
+    set({ previewPlans: rest });
+    await deletePreviewPlanFromDB(previewPlanId);
+  },
+
+  upsertPrinciple: async (principle) => {
+    const { principles } = get();
+    set({ principles: { ...principles, [principle.id]: principle } });
+    await savePrinciple(principle);
+  },
+
+  deletePrinciple: async (principleId) => {
+    const { principles } = get();
+    const { [principleId]: _, ...rest } = principles;
+    set({ principles: rest });
+    await deletePrincipleFromDB(principleId);
+  },
+
+  promoteConclusionToPrinciple: async (reviewCaseId, conclusionId) => {
+    const { reviewCases, principles } = get();
+    const reviewCase = reviewCases[reviewCaseId];
+    if (!reviewCase) return;
+
+    const conclusion = reviewCase.conclusions.find((c) => c.id === conclusionId);
+    if (!conclusion) return;
+
+    const now = new Date().toISOString();
+    const principle: Principle = {
+      id: createId(),
+      title: conclusion.title,
+      content: conclusion.content,
+      sourceConclusionId: conclusionId,
+      sourceReviewCaseId: reviewCaseId,
+      evidenceRefs: conclusion.evidenceRefs,
+      applicableContexts: [],
+      boundaries: conclusion.boundary ? [conclusion.boundary] : [],
+      verificationStatus: 'unverified',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    set({ principles: { ...principles, [principle.id]: principle } });
+    await savePrinciple(principle);
+  },
 }));
 
 /** Get entry by date key */
@@ -427,5 +542,27 @@ export function getInsightsForPeriod(startDate: string, endDate: string): Insigh
   const { insights } = useTimelineStore.getState();
   return Object.values(insights).filter(
     (i) => i.periodStart >= startDate && i.periodEnd <= endDate
+  );
+}
+
+/** Get review cases for a period */
+export function getReviewCasesForPeriod(startDate: string, endDate: string): ReviewCase[] {
+  const { reviewCases } = useTimelineStore.getState();
+  return Object.values(reviewCases).filter(
+    (rc) => rc.startDate >= startDate && rc.endDate <= endDate
+  );
+}
+
+/** Get principles by verification status */
+export function getPrinciplesByVerificationStatus(status: Principle['verificationStatus']): Principle[] {
+  const { principles } = useTimelineStore.getState();
+  return Object.values(principles).filter((p) => p.verificationStatus === status);
+}
+
+/** Get preview plans for a period */
+export function getPreviewPlansForPeriod(startDate: string, endDate: string): PreviewPlan[] {
+  const { previewPlans } = useTimelineStore.getState();
+  return Object.values(previewPlans).filter(
+    (pp) => pp.startDate >= startDate && pp.endDate <= endDate
   );
 }

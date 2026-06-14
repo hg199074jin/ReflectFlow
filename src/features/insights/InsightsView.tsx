@@ -18,7 +18,7 @@ const SEVERITY_LABELS: Record<InsightSeverity, string> = {
 };
 
 export function InsightsView() {
-  const { entries, goals, insights, saveInsights, clearInsights } = useTimelineStore();
+  const { entries, goals, reviewCases, principles, insights, saveInsights, clearInsights } = useTimelineStore();
   const [filterSeverity, setFilterSeverity] = useState<InsightSeverity | 'all'>('all');
   const [generating, setGenerating] = useState(false);
 
@@ -50,6 +50,8 @@ export function InsightsView() {
       const newInsights = generateInsights({
         entries,
         goals,
+        reviewCases,
+        principles,
         periodStart,
         periodEnd,
       });
@@ -66,11 +68,11 @@ export function InsightsView() {
   return (
     <div className="insights-view">
       <div className="insights-header">
-        <h2 className="insights-title">Trend Insights</h2>
+        <h2 className="insights-title">趋势洞察</h2>
         <div className="insights-actions">
-          <Button variant="secondary" onClick={handleClear}>Clear</Button>
+          <Button variant="secondary" onClick={handleClear}>清除</Button>
           <Button onClick={handleGenerate} loading={generating}>
-            Generate Insights
+            生成洞察
           </Button>
         </div>
       </div>
@@ -96,32 +98,32 @@ export function InsightsView() {
           className={`insights-filter-btn ${filterSeverity === 'all' ? 'active' : ''}`}
           onClick={() => setFilterSeverity('all')}
         >
-          All
+          全部
         </button>
         <button
           className={`insights-filter-btn ${filterSeverity === 'critical' ? 'active' : ''}`}
           onClick={() => setFilterSeverity('critical')}
         >
-          Critical
+          严重
         </button>
         <button
           className={`insights-filter-btn ${filterSeverity === 'warning' ? 'active' : ''}`}
           onClick={() => setFilterSeverity('warning')}
         >
-          Warning
+          警告
         </button>
         <button
           className={`insights-filter-btn ${filterSeverity === 'info' ? 'active' : ''}`}
           onClick={() => setFilterSeverity('info')}
         >
-          Info
+          信息
         </button>
       </div>
 
       <div className="insights-list">
         {filteredInsights.length === 0 ? (
           <p className="insights-empty">
-            No insights for this period. Click "Generate Insights" to analyze your data.
+            本周期暂无洞察。点击「生成洞察」分析你的数据。
           </p>
         ) : (
           filteredInsights.map((insight) => (
@@ -155,7 +157,7 @@ function InsightCard({ insight }: { insight: Insight }) {
       <div className="insight-card-summary">{insight.summary}</div>
       {expanded && insight.evidenceRefs.length > 0 && (
         <div className="insight-card-evidence">
-          <h4>Evidence</h4>
+          <h4>证据</h4>
           <EvidenceList evidence={insight.evidenceRefs} />
         </div>
       )}

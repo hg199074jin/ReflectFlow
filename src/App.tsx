@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTimelineStore } from './store';
 import { CheckinView } from './components/views/CheckinView';
 import { TimelineView } from './components/views/TimelineView';
+import { ExperienceTimelineView } from './components/views/ExperienceTimelineView';
 import { TimelineGanttView } from './components/views/TimelineGanttView';
 import { StatsPanel } from './components/views/StatsPanel';
 import { ReviewHistory } from './components/views/ReviewHistory';
@@ -10,9 +11,14 @@ import { MonthlyReviewReport } from './components/views/MonthlyReviewReport';
 import { GoalsView } from './features/goals/GoalsView';
 import { ReportsView } from './features/reports/ReportsView';
 import { InsightsView } from './features/insights/InsightsView';
+import { ReviewCasesView } from './features/reviewCases/ReviewCasesView';
+import { PreviewPlansView } from './features/preview/PreviewPlansView';
+import { PrinciplesView } from './features/principles/PrinciplesView';
+import { SearchView } from './components/views/SearchView';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { ExportDialog } from './components/dialogs/ExportDialog';
 import { Button } from './components/primitives/Button';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import type { AppMode, ViewMode } from './lib/schema';
 import { getWeekRange, toDateKey } from './lib/date';
 
@@ -26,35 +32,79 @@ export default function App() {
     initialize().then(() => setReady(true));
   }, [initialize]);
 
+  useKeyboardShortcuts({
+    onOpenSettings: () => setShowSettings(true),
+    onOpenExport: () => setShowExport(true),
+    onCloseDialog: () => {
+      setShowSettings(false);
+      setShowExport(false);
+    },
+  });
+
   if (!ready) {
-    return <main className="app-shell">Loading...</main>;
+    return (
+      <main className="app-shell">
+        <div className="skeleton-header">
+          <div className="skeleton-line skeleton-title" />
+          <div className="skeleton-actions">
+            <div className="skeleton-line skeleton-btn" />
+            <div className="skeleton-line skeleton-btn" />
+          </div>
+        </div>
+        <div className="skeleton-mode-nav">
+          <div className="skeleton-line skeleton-mode-btn" />
+          <div className="skeleton-line skeleton-mode-btn" />
+        </div>
+        <div className="skeleton-cards">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton-line skeleton-card-date" />
+              <div className="skeleton-line skeleton-card-text" />
+              <div className="skeleton-line skeleton-card-text short" />
+            </div>
+          ))}
+        </div>
+      </main>
+    );
   }
 
   const modes: { key: AppMode; label: string; icon: string }[] = [
-    { key: 'checkin', label: '录入', icon: '✏️' },
-    { key: 'browse', label: '查看', icon: '📊' },
+    { key: 'checkin', label: '录入', icon: 'Write' },
+    { key: 'browse', label: '查看', icon: 'Review' },
   ];
 
   const today = toDateKey(new Date());
   const currentWeekStart = getWeekRange(today).start;
 
   const browseTabs: { key: ViewMode; label: string }[] = [
-    { key: 'cards', label: 'Timeline' },
-    { key: 'gantt', label: 'Gantt' },
-    { key: 'stats', label: 'Stats' },
+    { key: 'cards', label: '时间线' },
+    { key: 'experience', label: '经历线' },
+    { key: 'gantt', label: '甘特图' },
+    { key: 'stats', label: '统计' },
     { key: 'review', label: '复盘' },
-    { key: 'goals', label: 'Goals' },
-    { key: 'reports', label: 'Reports' },
-    { key: 'insights', label: 'Insights' },
+    { key: 'goals', label: '目标' },
+    { key: 'preview', label: '事前沙盘' },
+    { key: 'reports', label: '报告' },
+    { key: 'insights', label: '洞察' },
+    { key: 'reviews', label: '复盘案例' },
+    { key: 'principles', label: '原则库' },
+    { key: 'search', label: '搜索' },
   ];
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell app-shell-mode-${appMode}`}>
       <header className="app-header">
-        <h1>Daily Check-in Timeline</h1>
+        <div className="app-brand">
+          <span className="app-brand-mark" aria-hidden="true">R</span>
+          <div>
+            <p className="app-brand-kicker">Reflection Flow</p>
+            <h1>每日打卡时间线</h1>
+            <p className="app-brand-subtitle">把每日行动沉淀成清晰、可复盘的长期成长水流。</p>
+          </div>
+        </div>
         <div className="app-header-actions">
-          <Button variant="secondary" onClick={() => setShowSettings(true)}>Settings</Button>
-          <Button variant="secondary" onClick={() => setShowExport(true)}>Export</Button>
+          <Button variant="secondary" onClick={() => setShowSettings(true)}>设置</Button>
+          <Button variant="secondary" onClick={() => setShowExport(true)}>导出</Button>
         </div>
       </header>
 
@@ -65,7 +115,7 @@ export default function App() {
             className={`app-mode-btn ${appMode === mode.key ? 'active' : ''}`}
             onClick={() => setAppMode(mode.key)}
           >
-            <span className="app-mode-icon">{mode.icon}</span>
+            <span className="app-mode-icon" aria-hidden="true">{mode.icon}</span>
             <span className="app-mode-label">{mode.label}</span>
           </button>
         ))}
@@ -88,6 +138,7 @@ export default function App() {
           </div>
           <div className="view-container">
             {view === 'cards' && <TimelineView />}
+            {view === 'experience' && <ExperienceTimelineView />}
             {view === 'gantt' && <TimelineGanttView />}
             {view === 'stats' && <StatsPanel />}
             {view === 'review' && (
@@ -104,8 +155,12 @@ export default function App() {
               </div>
             )}
             {view === 'goals' && <GoalsView />}
+            {view === 'preview' && <PreviewPlansView />}
             {view === 'reports' && <ReportsView />}
             {view === 'insights' && <InsightsView />}
+            {view === 'reviews' && <ReviewCasesView />}
+            {view === 'principles' && <PrinciplesView />}
+            {view === 'search' && <SearchView />}
           </div>
         </>
       )}

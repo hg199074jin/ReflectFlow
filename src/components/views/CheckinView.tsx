@@ -15,6 +15,7 @@ export function CheckinView() {
   const streak = calculateStreak(entriesList, today);
   const setReflection = useTimelineStore((s) => s.setReflection);
   const setAIQuestions = useTimelineStore((s) => s.setAIQuestions);
+  const setQuestionAnswers = useTimelineStore((s) => s.setQuestionAnswers);
   const setAIInFlight = useTimelineStore((s) => s.setAIInFlight);
 
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,8 @@ export function CheckinView() {
   const isGeneratingQuestions = useTimelineStore((s) => s.aiInFlight['questions-' + today]);
   const isGeneratingReflection = useTimelineStore((s) => s.aiInFlight['reflection-' + today]);
 
+  const isFirstTime = entriesList.length === 0;
+
   return (
     <div className="checkin-view">
       <div className="checkin-header">
@@ -73,6 +76,30 @@ export function CheckinView() {
         </div>
       </div>
 
+      {isFirstTime && (
+        <div className="empty-state-guide">
+          <div className="empty-state-icon">📝</div>
+          <h3 className="empty-state-title">欢迎使用每日打卡</h3>
+          <p className="empty-state-description">
+            开始你的每日复盘习惯。记录今天做了什么、学到了什么、副业有什么进展。
+          </p>
+          <div className="empty-state-steps">
+            <div className="empty-state-step">
+              <span className="empty-state-step-number">1</span>
+              <span className="empty-state-step-text">在下方输入今日事项 — 每行一条</span>
+            </div>
+            <div className="empty-state-step">
+              <span className="empty-state-step-number">2</span>
+              <span className="empty-state-step-text">点击「生成引导提问」，AI 帮你深度复盘</span>
+            </div>
+            <div className="empty-state-step">
+              <span className="empty-state-step-number">3</span>
+              <span className="empty-state-step-text">切换到「查看」模式，浏览时间线和统计</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="checkin-editor-section">
         <h3 className="checkin-section-title">今日事项</h3>
         <EntryEditor date={today} />
@@ -88,11 +115,22 @@ export function CheckinView() {
         {entry?.ai?.questions && entry.ai.questions.length > 0 && (
           <div className="checkin-questions">
             <h4>引导提问</h4>
-            <ul>
-              {entry.ai.questions.map((q, i) => (
-                <li key={i}>{q}</li>
-              ))}
-            </ul>
+            {entry.ai.questions.map((q, i) => (
+              <div key={i} className="checkin-question-item">
+                <p className="checkin-question-text">{q}</p>
+                <textarea
+                  className="checkin-question-answer"
+                  value={entry.ai?.questionAnswers?.[i] ?? ''}
+                  onChange={(e) => {
+                    const answers = [...(entry.ai?.questionAnswers ?? [])];
+                    answers[i] = e.target.value;
+                    setQuestionAnswers(today, answers);
+                  }}
+                  placeholder="写下你的思考..."
+                  rows={2}
+                />
+              </div>
+            ))}
           </div>
         )}
 

@@ -67,6 +67,75 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     ],
     requiresEvidence: true,
   },
+  // Plus Review Method Templates
+  {
+    id: 'structured-weekly-review',
+    name: '结构化周复盘',
+    period: 'week',
+    description: '基于五步法的深度周复盘',
+    sections: [
+      { id: 'process', title: '梳理过程' },
+      { id: 'expectation', title: '回顾目标' },
+      { id: 'evaluation', title: '评估结果' },
+      { id: 'cause-analysis', title: '分析原因' },
+      { id: 'learning', title: '总结经验' },
+      { id: 'actions', title: '行动计划' },
+    ],
+    requiresEvidence: true,
+  },
+  {
+    id: 'five-step-monthly-review',
+    name: '五步法月度复盘',
+    period: 'month',
+    description: '基于沈磊五步法的月度深度复盘',
+    sections: [
+      { id: 'overview', title: '月度概览' },
+      { id: 'key-events', title: '关键事件复盘' },
+      { id: 'deviation-matrix', title: '偏差矩阵' },
+      { id: 'principles', title: '沉淀原则' },
+      { id: 'next-month', title: '下月推演' },
+    ],
+    requiresEvidence: true,
+  },
+  {
+    id: 'goal-deviation-review',
+    name: '目标偏差复盘',
+    period: 'month',
+    description: '专注于目标偏差分析的复盘',
+    sections: [
+      { id: 'goal-summary', title: '目标汇总' },
+      { id: 'deviation-analysis', title: '偏差分析' },
+      { id: 'root-causes', title: '根因分析' },
+      { id: 'corrections', title: '纠偏措施' },
+    ],
+    requiresEvidence: true,
+  },
+  {
+    id: 'principle-digest',
+    name: '原则库摘要',
+    period: 'month',
+    description: '总结本月沉淀的原则和洞察',
+    sections: [
+      { id: 'new-principles', title: '新增原则' },
+      { id: 'validated-principles', title: '已验证原则' },
+      { id: 'insights', title: '关键洞察' },
+      { id: 'applications', title: '应用场景' },
+    ],
+    requiresEvidence: true,
+  },
+  {
+    id: 'preview-vs-result',
+    name: '事前推演 vs 实际结果',
+    period: 'month',
+    description: '对比事前沙盘与实际执行结果',
+    sections: [
+      { id: 'preview-summary', title: '事前推演回顾' },
+      { id: 'actual-results', title: '实际结果' },
+      { id: 'deviations', title: '偏差分析' },
+      { id: 'lessons', title: '经验教训' },
+    ],
+    requiresEvidence: true,
+  },
 ];
 
 export function getReportTemplate(id: string): ReportTemplate | undefined {

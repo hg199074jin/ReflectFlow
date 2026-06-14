@@ -34,28 +34,28 @@ export function StatsPanel() {
     <div className="stats-panel">
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-card-label">Total Bullets</div>
+          <div className="stat-card-label">总记录数</div>
           <div className="stat-card-value">{totalBullets}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-label">Work</div>
+          <div className="stat-card-label">工作</div>
           <div className="stat-card-value">{totals.work}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-label">Study</div>
+          <div className="stat-card-label">学习</div>
           <div className="stat-card-value">{totals.study}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-label">Side</div>
+          <div className="stat-card-label">副业</div>
           <div className="stat-card-value">{totals.side}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-label">Current Streak</div>
-          <div className="stat-card-value">{streak} day{streak !== 1 ? 's' : ''}</div>
+          <div className="stat-card-label">连续打卡</div>
+          <div className="stat-card-value">{streak} 天</div>
         </div>
       </div>
 
-      <h3>Activity Heatmap</h3>
+      <h3>活动热力图</h3>
       <HeatmapCalendar month={selectedMonth} entries={entriesMap} />
 
       <ThemeManagementPanel />

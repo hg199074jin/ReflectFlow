@@ -26,14 +26,14 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog onClose={onClose} />);
     expect(screen.getByLabelText(/base url/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/api key/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/model/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/模型名称/i)).toBeInTheDocument();
   });
 
   it('saves settings', async () => {
     render(<SettingsDialog onClose={onClose} />);
     fireEvent.change(screen.getByLabelText(/base url/i), { target: { value: 'http://localhost:8080/v1' } });
-    fireEvent.change(screen.getByLabelText(/model/i), { target: { value: 'llama3' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.change(screen.getByLabelText(/模型名称/i), { target: { value: 'llama3' } });
+    fireEvent.click(screen.getByText('保存'));
     await waitFor(() => {
       const settings = useTimelineStore.getState().settings;
       expect(settings.llm.baseUrl).toBe('http://localhost:8080/v1');
@@ -45,13 +45,13 @@ describe('SettingsDialog', () => {
   it('shows error for missing baseUrl', () => {
     render(<SettingsDialog onClose={onClose} />);
     fireEvent.change(screen.getByLabelText(/base url/i), { target: { value: '' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('保存'));
     expect(screen.getByText(/required/i)).toBeInTheDocument();
   });
 
   it('calls onClose when cancel clicked', () => {
     render(<SettingsDialog onClose={onClose} />);
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('取消'));
     expect(onClose).toHaveBeenCalled();
   });
 });

@@ -1,10 +1,15 @@
-import type { Entry, Goal, GeneratedReport, ReportSection, EvidenceRef, ReportTemplate } from '../../lib/schema';
+import type {
+  Entry, Goal, GeneratedReport, ReportSection,
+  EvidenceRef, ReportTemplate, ReviewCase, Principle,
+} from '../../lib/schema';
 import { createId } from '../../lib/ids';
 
 interface BuildReportInput {
   template: ReportTemplate;
   entries: Entry[];
   goals: Goal[];
+  reviewCases?: ReviewCase[];
+  principles?: Principle[];
   startDate: string;
   endDate: string;
 }
@@ -13,7 +18,7 @@ interface BuildReportInput {
  * Build a deterministic local report (no AI)
  */
 export function buildLocalReport(input: BuildReportInput): GeneratedReport {
-  const { template, entries, goals, startDate, endDate } = input;
+  const { template, entries, goals, reviewCases = [], principles = [], startDate, endDate } = input;
   const now = new Date().toISOString();
 
   // Collect all bullets
@@ -31,7 +36,7 @@ export function buildLocalReport(input: BuildReportInput): GeneratedReport {
     switch (section.id) {
       case 'summary':
       case 'overview':
-        content = `Period: ${startDate} ~ ${endDate}\nTotal entries: ${entries.length}\nTotal bullets: ${allBullets.length}`;
+        content = `期间：${startDate} ~ ${endDate}\n记录数：${entries.length}\n事项数：${allBullets.length}\n复盘案例：${reviewCases.length}\n原则数：${principles.length}`;
         break;
       case 'achievements':
       case 'progress':
@@ -49,11 +54,75 @@ export function buildLocalReport(input: BuildReportInput): GeneratedReport {
         if (goals.length > 0) {
           content = goals.map((g) => `- ${g.title} (${g.status})`).join('\n');
         } else {
-          content = 'No goals set for this period.';
+          content = '本期未设定目标';
+        }
+        break;
+      case 'process':
+      case 'key-events':
+        if (reviewCases.length > 0) {
+          content = reviewCases.map((rc) => `### ${rc.title}\n${rc.steps.process.timelineNotes || '未记录'}`).join('\n\n');
+        } else {
+          content = '本期无复盘案例';
+        }
+        break;
+      case 'expectation':
+      case 'evaluation':
+      case 'deviation-matrix':
+        if (reviewCases.length > 0) {
+          content = reviewCases.map((rc) => {
+            const rows = rc.steps.evaluation.rows;
+            if (rows.length === 0) return `### ${rc.title}\n无偏差记录`;
+            return `### ${rc.title}\n${rows.map((r) => `- ${r.expectation} → ${r.result} (${r.status})`).join('\n')}`;
+          }).join('\n\n');
+        } else {
+          content = '本期无偏差数据';
+        }
+        break;
+      case 'cause-analysis':
+      case 'root-causes':
+        if (reviewCases.length > 0) {
+          content = reviewCases.map((rc) => {
+            const whys = rc.steps.causeAnalysis.whys;
+            if (whys.length === 0) return `### ${rc.title}\n未进行原因分析`;
+            return `### ${rc.title}\n${whys.map((w) => `${'  '.repeat(w.depth - 1)}Q: ${w.question}\nA: ${w.answer}`).join('\n')}`;
+          }).join('\n\n');
+        } else {
+          content = '本期无原因分析';
+        }
+        break;
+      case 'learning':
+      case 'lessons':
+        if (reviewCases.length > 0) {
+          content = reviewCases.map((rc) => {
+            const learning = rc.steps.learning;
+            const insights = learning.insights.map((i) => `- 洞察：${i}`).join('\n');
+            const rules = learning.rules.map((r) => `- 规律：${r}`).join('\n');
+            return `### ${rc.title}\n${insights}\n${rules}`;
+          }).join('\n\n');
+        } else {
+          content = '本期无经验总结';
+        }
+        break;
+      case 'principles':
+      case 'new-principles':
+      case 'validated-principles':
+        if (principles.length > 0) {
+          content = principles.map((p) => `- **${p.title}**：${p.content}`).join('\n');
+        } else {
+          content = '本期无沉淀原则';
+        }
+        break;
+      case 'actions':
+        if (reviewCases.length > 0) {
+          content = reviewCases.flatMap((rc) =>
+            rc.actionItems.map((a) => `- [${a.mode}] ${a.title}${a.completed ? ' ✓' : ''}`)
+          ).join('\n') || '本期无行动计划';
+        } else {
+          content = '本期无行动计划';
         }
         break;
       default:
-        content = `[${section.title}] - Generate with AI for detailed content`;
+        content = `[${section.title}] - 请使用 AI 生成详细内容`;
     }
 
     return {

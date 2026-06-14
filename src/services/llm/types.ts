@@ -1,10 +1,58 @@
-import type { ClassifiableBullet, Entry, Settings } from '../../lib/schema';
+import type {
+  ClassifiableBullet, Entry, Settings,
+  ReviewCase, ConclusionQuality,
+} from '../../lib/schema';
+
+export interface ReportGenerationInput {
+  title: string;
+  period: 'week' | 'month';
+  startDate: string;
+  endDate: string;
+  entries: Array<{ date: string; bullets: string[] }>;
+  goals: Array<{ title: string; status: string }>;
+  reviewCases: Array<{ title: string; conclusions: string[] }>;
+  principles: Array<{ title: string; content: string }>;
+}
+
+export interface ReviewQuestionInput {
+  reviewCase: ReviewCase;
+  currentStep: string;
+  evidence: Array<{ date: string; text: string }>;
+  whyChains: Array<{ id?: string; question: string; answer: string; depth: number }>;
+}
+
+export interface ReviewFacilitatorInput {
+  reviewCase: ReviewCase;
+  currentStep: string;
+  evidence: Array<{ date: string; text: string }>;
+}
+
+export interface ConclusionQualityInput {
+  content: string;
+  whyChains: Array<{ id?: string; question: string; answer: string; depth: number }>;
+  evidenceCount: number;
+}
+
+export interface FacilitatorAdvice {
+  canProceed: boolean;
+  missingFacts: string[];
+  recommendedAction: string;
+  warnings: string[];
+}
 
 export interface LLMProvider {
   generateReflection(entry: Entry): Promise<string>;
+  generateDailyReview(entry: Entry): Promise<{ gap: string; reason: string; whatIf: string; lesson: string }>;
   generateReflectionQuestions(entry: Entry): Promise<string[]>;
   generateWeekSummary(entries: Entry[], weekStart: string): Promise<string>;
   classifyProjects(bullets: ClassifiableBullet[]): Promise<Array<{ name: string; bulletIds: string[] }>>;
+  generateReviewQuestions(input: ReviewQuestionInput): Promise<string[]>;
+  generateFacilitatorAdvice(input: ReviewFacilitatorInput): Promise<FacilitatorAdvice>;
+  generateConclusionQualityAdvice(input: ConclusionQualityInput): Promise<ConclusionQuality>;
+  generateReport(input: ReportGenerationInput): Promise<string>;
+  generateExperienceTitles(
+    items: Array<{ date: string; bullets: string[]; reflection?: string }>,
+  ): Promise<Array<{ date: string; title: string }>>;
 }
 
 export type LLMSettings = Settings['llm'];

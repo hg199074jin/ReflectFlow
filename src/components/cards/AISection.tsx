@@ -41,13 +41,13 @@ export function AISection({ date }: AISectionProps) {
   return (
     <div className="ai-section">
       <div className="ai-section-header">
-        <span className="ai-section-title">AI Reflection</span>
+        <span className="ai-section-title">AI 复盘</span>
         <div className="ai-section-actions">
           {entry.ai?.reflection && (
-            <Button variant="ghost" onClick={handleCopy}>Copy</Button>
+            <Button variant="ghost" onClick={handleCopy}>复制</Button>
           )}
           <Button variant="secondary" onClick={handleGenerate} loading={aiInFlight}>
-            {entry.ai?.reflection ? 'Regenerate' : 'Generate'}
+            {entry.ai?.reflection ? '重新生成' : '生成复盘'}
           </Button>
         </div>
       </div>

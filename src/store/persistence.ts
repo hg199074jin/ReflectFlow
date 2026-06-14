@@ -2,18 +2,23 @@ import { openDB, type IDBPDatabase } from 'idb';
 import {
   entrySchema, settingsSchema, weeklyReviewSchema,
   goalSchema, generatedReportSchema, insightSchema,
+  reviewCaseSchema, previewPlanSchema, principleSchema,
   type Entry, type Settings, type WeeklyReview,
   type Goal, type GeneratedReport, type Insight,
+  type ReviewCase, type PreviewPlan, type Principle,
 } from '../lib/schema';
 
 const DB_NAME = 'timeline-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const ENTRIES_STORE = 'entries';
 const SETTINGS_STORE = 'settings';
 const WEEKLY_REVIEWS_STORE = 'weeklyReviews';
 const GOALS_STORE = 'goals';
 const REPORTS_STORE = 'reports';
 const INSIGHTS_STORE = 'insights';
+const REVIEW_CASES_STORE = 'reviewCases';
+const PREVIEW_PLANS_STORE = 'previewPlans';
+const PRINCIPLES_STORE = 'principles';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -41,6 +46,18 @@ function getDB() {
           }
           if (!db.objectStoreNames.contains(INSIGHTS_STORE)) {
             db.createObjectStore(INSIGHTS_STORE, { keyPath: 'id' });
+          }
+        }
+        // Version 4: add reviewCases, previewPlans, principles stores
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains(REVIEW_CASES_STORE)) {
+            db.createObjectStore(REVIEW_CASES_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(PREVIEW_PLANS_STORE)) {
+            db.createObjectStore(PREVIEW_PLANS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(PRINCIPLES_STORE)) {
+            db.createObjectStore(PRINCIPLES_STORE, { keyPath: 'id' });
           }
         }
       },
@@ -202,7 +219,7 @@ export async function clearInsights(): Promise<void> {
 export async function clearAllData(): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    [ENTRIES_STORE, SETTINGS_STORE, WEEKLY_REVIEWS_STORE, GOALS_STORE, REPORTS_STORE, INSIGHTS_STORE],
+    [ENTRIES_STORE, SETTINGS_STORE, WEEKLY_REVIEWS_STORE, GOALS_STORE, REPORTS_STORE, INSIGHTS_STORE, REVIEW_CASES_STORE, PREVIEW_PLANS_STORE, PRINCIPLES_STORE],
     'readwrite'
   );
   await Promise.all([
@@ -212,6 +229,87 @@ export async function clearAllData(): Promise<void> {
     tx.objectStore(GOALS_STORE).clear(),
     tx.objectStore(REPORTS_STORE).clear(),
     tx.objectStore(INSIGHTS_STORE).clear(),
+    tx.objectStore(REVIEW_CASES_STORE).clear(),
+    tx.objectStore(PREVIEW_PLANS_STORE).clear(),
+    tx.objectStore(PRINCIPLES_STORE).clear(),
     tx.done,
   ]);
+}
+
+// Review Cases
+export async function loadReviewCases(): Promise<Record<string, ReviewCase>> {
+  const db = await getDB();
+  const raw = await db.getAll(REVIEW_CASES_STORE);
+  const result: Record<string, ReviewCase> = {};
+  for (const item of raw) {
+    try {
+      const validated = reviewCaseSchema.parse(item);
+      result[validated.id] = validated;
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
+}
+
+export async function saveReviewCase(reviewCase: ReviewCase): Promise<void> {
+  const db = await getDB();
+  await db.put(REVIEW_CASES_STORE, reviewCase);
+}
+
+export async function deleteReviewCase(reviewCaseId: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(REVIEW_CASES_STORE, reviewCaseId);
+}
+
+// Preview Plans
+export async function loadPreviewPlans(): Promise<Record<string, PreviewPlan>> {
+  const db = await getDB();
+  const raw = await db.getAll(PREVIEW_PLANS_STORE);
+  const result: Record<string, PreviewPlan> = {};
+  for (const item of raw) {
+    try {
+      const validated = previewPlanSchema.parse(item);
+      result[validated.id] = validated;
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
+}
+
+export async function savePreviewPlan(previewPlan: PreviewPlan): Promise<void> {
+  const db = await getDB();
+  await db.put(PREVIEW_PLANS_STORE, previewPlan);
+}
+
+export async function deletePreviewPlan(previewPlanId: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(PREVIEW_PLANS_STORE, previewPlanId);
+}
+
+// Principles
+export async function loadPrinciples(): Promise<Record<string, Principle>> {
+  const db = await getDB();
+  const raw = await db.getAll(PRINCIPLES_STORE);
+  const result: Record<string, Principle> = {};
+  for (const item of raw) {
+    try {
+      const validated = principleSchema.parse(item);
+      result[validated.id] = validated;
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
+}
+
+export async function savePrinciple(principle: Principle): Promise<void> {
+  const db = await getDB();
+  await db.put(PRINCIPLES_STORE, principle);
+}
+
+export async function deletePrinciple(principleId: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(PRINCIPLES_STORE, principleId);
 }

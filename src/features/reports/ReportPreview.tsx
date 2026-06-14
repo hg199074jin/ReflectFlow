@@ -39,7 +39,7 @@ export function ReportPreview({ report, onClose }: ReportPreviewProps) {
         <div className="report-preview-header">
           <h2 className="report-preview-title">{report.title}</h2>
           <div className="report-preview-meta">
-            <span>{report.period === 'week' ? 'Weekly' : 'Monthly'} Report</span>
+            <span>{report.period === 'week' ? '周报' : '月报'}</span>
             <span>{report.startDate} ~ {report.endDate}</span>
           </div>
         </div>
@@ -57,9 +57,9 @@ export function ReportPreview({ report, onClose }: ReportPreviewProps) {
 
         <div className="report-preview-actions">
           <Button variant="secondary" onClick={handleCopy}>
-            {copySuccess ? 'Copied!' : 'Copy Markdown'}
+            {copySuccess ? '已复制！' : '复制 Markdown'}
           </Button>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>关闭</Button>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@ function ReportSectionCard({
         <h3 className="report-section-title">{section.title}</h3>
         {hasEvidence && (
           <span className="report-section-evidence-count">
-            {section.evidenceRefs.length} evidence
+            {section.evidenceRefs.length} 条证据
           </span>
         )}
         <span className={`report-section-toggle ${expanded ? 'expanded' : ''}`}>
@@ -95,7 +95,7 @@ function ReportSectionCard({
       </div>
       {expanded && hasEvidence && (
         <div className="report-section-evidence">
-          <h4>Evidence</h4>
+          <h4>证据</h4>
           <EvidenceList evidence={section.evidenceRefs} />
         </div>
       )}

@@ -32,15 +32,15 @@ describe('ExportDialog', () => {
 
   it('renders export controls', () => {
     render(<ExportDialog onClose={onClose} />);
-    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/end date/i)).toBeInTheDocument();
-    expect(screen.getByText(/export markdown/i)).toBeInTheDocument();
-    expect(screen.getByText(/export png/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/开始日期/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/结束日期/i)).toBeInTheDocument();
+    expect(screen.getByText(/导出 Markdown/i)).toBeInTheDocument();
+    expect(screen.getByText(/导出 PNG/i)).toBeInTheDocument();
   });
 
   it('calls onClose when cancel clicked', () => {
     render(<ExportDialog onClose={onClose} />);
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('取消'));
     expect(onClose).toHaveBeenCalled();
   });
 });

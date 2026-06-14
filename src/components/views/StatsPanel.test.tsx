@@ -37,11 +37,11 @@ describe('StatsPanel', () => {
   it('shows streak count', () => {
     useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'task');
     render(<StatsPanel />);
-    expect(screen.getByText(/streak/i)).toBeInTheDocument();
+    expect(screen.getByText(/连续打卡/)).toBeInTheDocument();
   });
 
   it('renders classify projects button', () => {
     render(<StatsPanel />);
-    expect(screen.getAllByText(/classify projects/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/AI 分类项目/).length).toBeGreaterThan(0);
   });
 });

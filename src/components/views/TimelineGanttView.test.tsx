@@ -21,7 +21,7 @@ describe('TimelineGanttView', () => {
 
   it('renders empty state when no projects', () => {
     render(<TimelineGanttView />);
-    expect(screen.getByText(/no projects/i)).toBeInTheDocument();
+    expect(screen.getByText(/暂无记录|按分类显示/)).toBeInTheDocument();
   });
 
   it('groups bullets by project', () => {
@@ -37,6 +37,6 @@ describe('TimelineGanttView', () => {
 
   it('renders classify projects button', () => {
     render(<TimelineGanttView />);
-    expect(screen.getAllByText(/classify projects/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/AI 分类项目/).length).toBeGreaterThan(0);
   });
 });

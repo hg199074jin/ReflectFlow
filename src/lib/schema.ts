@@ -69,6 +69,7 @@ export type WeeklyReview = z.infer<typeof weeklyReviewSchema>;
 export const aiDataSchema = z.object({
   reflection: z.string().optional(),
   questions: z.array(z.string()).optional(),  // AI引导提问
+  questionAnswers: z.array(z.string()).optional(),  // 用户对引导提问的回答
   weekSummary: z.object({ weekStart: z.string(), content: z.string() }).optional(),
   projects: z.array(z.object({
     name: z.string(),
@@ -86,6 +87,11 @@ export const entrySchema = z.object({
     study: z.array(bulletSchema),
     side: z.array(bulletSchema),
   }),
+  rawText: z.object({
+    work: z.string().optional(),
+    study: z.string().optional(),
+    side: z.string().optional(),
+  }).optional(),
   review: dailyReviewSchema.optional(),  // 每日复盘数据
   ai: aiDataSchema,
   createdAt: z.string(),
@@ -107,7 +113,7 @@ export const settingsSchema = z.object({
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
-export type ViewMode = 'cards' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights';
+export type ViewMode = 'cards' | 'experience' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights' | 'reviews' | 'preview' | 'principles' | 'search';
 export type AppMode = 'checkin' | 'browse';
 
 export interface ClassifiableBullet {
@@ -217,3 +223,222 @@ export interface ReportTemplate {
   sections: Array<{ id: string; title: string }>;
   requiresEvidence: boolean;
 }
+
+// ========================================
+// Plus Review Method Types
+// ========================================
+
+// 复盘案例类型
+export const reviewCaseTypeSchema = z.enum(['daily', 'weekly', 'monthly', 'goal', 'theme', 'event', 'benchmark']);
+export type ReviewCaseType = z.infer<typeof reviewCaseTypeSchema>;
+
+export const REVIEW_CASE_TYPE_LABELS: Record<ReviewCaseType, string> = {
+  daily: '每日复盘',
+  weekly: '每周复盘',
+  monthly: '每月复盘',
+  goal: '目标复盘',
+  theme: '主题复盘',
+  event: '事件复盘',
+  benchmark: '标杆复盘',
+};
+
+// 复盘案例状态
+export const reviewCaseStatusSchema = z.enum(['draft', 'in-review', 'completed', 'archived']);
+export type ReviewCaseStatus = z.infer<typeof reviewCaseStatusSchema>;
+
+export const REVIEW_CASE_STATUS_LABELS: Record<ReviewCaseStatus, string> = {
+  draft: '草稿',
+  'in-review': '进行中',
+  completed: '已完成',
+  archived: '已归档',
+};
+
+// 偏差行
+export const deviationRowSchema = z.object({
+  id: z.string(),
+  level: z.enum(['purpose', 'goal', 'measure']),
+  expectation: z.string(),
+  result: z.string(),
+  deviation: z.string(),
+  status: z.enum(['met', 'missed', 'exceeded', 'unclear', 'not-measurable']),
+  evidenceRefs: z.array(evidenceRefSchema),
+});
+export type DeviationRow = z.infer<typeof deviationRowSchema>;
+
+export const DEVIATION_STATUS_LABELS: Record<DeviationRow['status'], string> = {
+  met: '达成',
+  missed: '未达成',
+  exceeded: '超预期',
+  unclear: '目标不清',
+  'not-measurable': '无法评估',
+};
+
+// Why 链
+export const whyChainSchema = z.object({
+  id: z.string(),
+  question: z.string(),
+  answer: z.string(),
+  depth: z.number().int().min(1),
+  parentId: z.string().optional(),
+});
+export type WhyChain = z.infer<typeof whyChainSchema>;
+
+// 原因项
+export const causeItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  controllability: z.enum(['controllable', 'influenceable', 'uncontrollable']),
+  source: z.enum(['subjective', 'objective', 'mixed']),
+  evidenceRefs: z.array(evidenceRefSchema),
+});
+export type CauseItem = z.infer<typeof causeItemSchema>;
+
+export const CONTROLLABILITY_LABELS: Record<CauseItem['controllability'], string> = {
+  controllable: '可控',
+  influenceable: '可影响',
+  uncontrollable: '不可控',
+};
+
+export const CAUSE_SOURCE_LABELS: Record<CauseItem['source'], string> = {
+  subjective: '主观',
+  objective: '客观',
+  mixed: '混合',
+};
+
+// 复盘步骤
+export const reviewStepsSchema = z.object({
+  process: z.object({
+    timelineNotes: z.string().optional(),
+    keyFacts: z.array(evidenceRefSchema),
+    missingFacts: z.array(z.string()),
+  }),
+  expectation: z.object({
+    purpose: z.string().optional(),
+    goals: z.array(z.string()),
+    measures: z.array(z.string()),
+    assumptions: z.array(z.string()),
+  }),
+  evaluation: z.object({
+    rows: z.array(deviationRowSchema),
+  }),
+  causeAnalysis: z.object({
+    whys: z.array(whyChainSchema),
+    controllability: z.array(causeItemSchema),
+    brightSpots: z.array(causeItemSchema),
+  }),
+  learning: z.object({
+    insights: z.array(z.string()),
+    rules: z.array(z.string()),
+    boundaries: z.array(z.string()),
+  }),
+});
+export type ReviewSteps = z.infer<typeof reviewStepsSchema>;
+
+// 结论质量
+export const conclusionQualitySchema = z.object({
+  score: z.number().min(0).max(100),
+  accidentalFactorRisk: z.enum(['low', 'medium', 'high']),
+  pointsToPersonRisk: z.enum(['low', 'medium', 'high']),
+  whyDepth: z.number().int().min(0),
+  hasCrossValidation: z.boolean(),
+  verdict: z.enum(['ready', 'needs-evidence', 'needs-deeper-why', 'observation-only']),
+});
+export type ConclusionQuality = z.infer<typeof conclusionQualitySchema>;
+
+export const QUALITY_VERDICT_LABELS: Record<ConclusionQuality['verdict'], string> = {
+  ready: '可沉淀',
+  'needs-evidence': '需补证据',
+  'needs-deeper-why': '需继续追问',
+  'observation-only': '仅作观察',
+};
+
+// 复盘结论
+export const reviewConclusionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  evidenceRefs: z.array(evidenceRefSchema),
+  quality: conclusionQualitySchema,
+  boundary: z.string().optional(),
+  reusableAsPrinciple: z.boolean(),
+  createdAt: z.string(),
+});
+export type ReviewConclusion = z.infer<typeof reviewConclusionSchema>;
+
+// 行动项
+export const reviewActionItemSchema = z.object({
+  id: z.string(),
+  mode: z.enum(['start', 'stop', 'continue']),
+  title: z.string(),
+  dueDate: z.string().optional(),
+  linkedGoalId: z.string().optional(),
+  completed: z.boolean(),
+});
+export type ReviewActionItem = z.infer<typeof reviewActionItemSchema>;
+
+export const ACTION_MODE_LABELS: Record<ReviewActionItem['mode'], string> = {
+  start: '开始做',
+  stop: '停止做',
+  continue: '继续做',
+};
+
+// 复盘案例
+export const reviewCaseSchema = z.object({
+  id: z.string(),
+  type: reviewCaseTypeSchema,
+  title: z.string(),
+  status: reviewCaseStatusSchema,
+  startDate: z.string(),
+  endDate: z.string(),
+  linkedGoalIds: z.array(z.string()),
+  linkedThemeNames: z.array(z.string()),
+  evidenceRefs: z.array(evidenceRefSchema),
+  steps: reviewStepsSchema,
+  conclusions: z.array(reviewConclusionSchema),
+  actionItems: z.array(reviewActionItemSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ReviewCase = z.infer<typeof reviewCaseSchema>;
+
+// 事前沙盘
+export const previewPlanSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  purpose: z.string(),
+  goals: z.array(z.string()),
+  strategies: z.array(z.string()),
+  assumptions: z.array(z.string()),
+  risks: z.array(z.string()),
+  contingencies: z.array(z.string()),
+  linkedGoalIds: z.array(z.string()),
+  startDate: z.string(),
+  endDate: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PreviewPlan = z.infer<typeof previewPlanSchema>;
+
+// 复盘原则
+export const principleSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  sourceConclusionId: z.string(),
+  sourceReviewCaseId: z.string(),
+  evidenceRefs: z.array(evidenceRefSchema),
+  applicableContexts: z.array(z.string()),
+  boundaries: z.array(z.string()),
+  verificationStatus: z.enum(['unverified', 'testing', 'validated', 'invalidated']),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Principle = z.infer<typeof principleSchema>;
+
+export const VERIFICATION_STATUS_LABELS: Record<Principle['verificationStatus'], string> = {
+  unverified: '未验证',
+  testing: '验证中',
+  validated: '已验证',
+  invalidated: '已失效',
+};

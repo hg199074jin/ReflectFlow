@@ -44,9 +44,13 @@ describe('TimelineCardsView', () => {
 
   it('updates store when typing', () => {
     const today = '2026-06-13';
-    useTimelineStore.getState().upsertEntryText(today, 'work', '');
+    useTimelineStore.getState().upsertEntryText(today, 'work', 'existing task');
     render(<TimelineCardsView />);
-    const textarea = screen.getAllByRole('textbox')[0]!;
+    // Find the textarea that contains the existing task text
+    const textarea = screen.getAllByRole('textbox').find(
+      (el) => (el as HTMLTextAreaElement).value === 'existing task'
+    ) as HTMLTextAreaElement;
+    expect(textarea).toBeDefined();
     fireEvent.change(textarea, { target: { value: 'new task' } });
     const entry = useTimelineStore.getState().entries[today];
     expect(entry?.bullets.work[0]?.text).toBe('new task');

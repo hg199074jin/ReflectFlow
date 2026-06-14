@@ -34,13 +34,13 @@ describe('AISection', () => {
   it('renders generate button', () => {
     useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'task');
     render(<AISection date="2026-06-13" />);
-    expect(screen.getByText('Generate')).toBeInTheDocument();
+    expect(screen.getByText('生成复盘')).toBeInTheDocument();
   });
 
   it('calls provider and shows reflection', async () => {
     useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'task');
     render(<AISection date="2026-06-13" />);
-    fireEvent.click(screen.getByText('Generate'));
+    fireEvent.click(screen.getByText('生成复盘'));
     await waitFor(() => {
       expect(screen.getByText('Great reflection')).toBeInTheDocument();
     });
@@ -50,7 +50,7 @@ describe('AISection', () => {
     mockGenerate.mockRejectedValueOnce(new Error('API error'));
     useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'task');
     render(<AISection date="2026-06-13" />);
-    fireEvent.click(screen.getByText('Generate'));
+    fireEvent.click(screen.getByText('生成复盘'));
     await waitFor(() => {
       expect(screen.getByText('API error')).toBeInTheDocument();
     });
@@ -60,7 +60,7 @@ describe('AISection', () => {
     useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'task');
     useTimelineStore.getState().setReflection('2026-06-13', 'Existing reflection');
     render(<AISection date="2026-06-13" />);
-    expect(screen.getByText('Regenerate')).toBeInTheDocument();
+    expect(screen.getByText('重新生成')).toBeInTheDocument();
   });
 
   it('copies reflection to clipboard', async () => {
@@ -69,7 +69,7 @@ describe('AISection', () => {
     useTimelineStore.getState().upsertEntryText('2026-06-13', 'work', 'task');
     useTimelineStore.getState().setReflection('2026-06-13', 'Copy me');
     render(<AISection date="2026-06-13" />);
-    fireEvent.click(screen.getByText('Copy'));
+    fireEvent.click(screen.getByText('复制'));
     expect(writeText).toHaveBeenCalledWith('Copy me');
   });
 });

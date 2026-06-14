@@ -1,5 +1,4 @@
 import { useTimelineStore } from '../../store';
-import { formatBulletText } from '../../lib/text';
 import { MarkdownEditor } from '../primitives/MarkdownEditor';
 import type { Category } from '../../lib/schema';
 
@@ -8,9 +7,9 @@ interface EntryEditorProps {
 }
 
 const categories: { key: Category; label: string }[] = [
-  { key: 'work', label: 'Work' },
-  { key: 'study', label: 'Study' },
-  { key: 'side', label: 'Side' },
+  { key: 'work', label: '工作' },
+  { key: 'study', label: '学习' },
+  { key: 'side', label: '副业' },
 ];
 
 export function EntryEditor({ date }: EntryEditorProps) {
@@ -20,8 +19,7 @@ export function EntryEditor({ date }: EntryEditorProps) {
   return (
     <div className="entry-editor">
       {categories.map((cat) => {
-        const bullets = entry?.bullets[cat.key] ?? [];
-        const text = formatBulletText(bullets);
+        const text = entry?.rawText?.[cat.key] ?? '';
 
         return (
           <div key={cat.key} className="category-section">

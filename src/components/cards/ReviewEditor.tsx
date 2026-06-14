@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useTimelineStore } from '../../store';
+import { createOpenAICompatibleProvider } from '../../services/llm/openaiCompatible';
 import { MarkdownEditor } from '../primitives/MarkdownEditor';
+import { Button } from '../primitives/Button';
 import { ReviewCoachPanel } from '../../features/coach/ReviewCoachPanel';
 import type { DailyReview, ReviewTag } from '../../lib/schema';
 import { REVIEW_TAG_LABELS } from '../../lib/schema';
@@ -19,12 +21,21 @@ const REVIEW_SECTIONS: Array<{ key: keyof DailyReview; label: string; placeholde
 
 export function ReviewEditor({ date }: ReviewEditorProps) {
   const entry = useTimelineStore((s) => s.entries[date]);
+  const settings = useTimelineStore((s) => s.settings);
   const updateDailyReview = useTimelineStore((s) => s.updateDailyReview);
   const [expanded, setExpanded] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const review = entry?.review;
   const hasReview = review && (
     review.target || review.gap || review.reason || review.whatIf || review.lesson
+  );
+
+  const hasBullets = entry && (
+    entry.bullets.work.length > 0 ||
+    entry.bullets.study.length > 0 ||
+    entry.bullets.side.length > 0
   );
 
   const handleUpdate = (key: keyof DailyReview, value: string) => {
@@ -43,6 +54,29 @@ export function ReviewEditor({ date }: ReviewEditorProps) {
     updateDailyReview(date, { quality });
   };
 
+  const handleAIGenerate = async () => {
+    if (!entry) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const provider = createOpenAICompatibleProvider(settings.llm);
+      const result = await provider.generateDailyReview(entry);
+      // 只填写空字段，不覆盖用户已有的内容
+      const updates: Partial<DailyReview> = {};
+      if (!review?.gap && result.gap) updates.gap = result.gap;
+      if (!review?.reason && result.reason) updates.reason = result.reason;
+      if (!review?.whatIf && result.whatIf) updates.whatIf = result.whatIf;
+      if (!review?.lesson && result.lesson) updates.lesson = result.lesson;
+      if (Object.keys(updates).length > 0) {
+        updateDailyReview(date, updates);
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'AI 生成失败');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="review-editor">
       <div
@@ -59,6 +93,24 @@ export function ReviewEditor({ date }: ReviewEditorProps) {
 
       {expanded && (
         <div className="review-editor-body">
+          {/* AI 自动填写按钮 */}
+          {hasBullets && (
+            <div className="review-ai-fill">
+              <Button
+                variant="secondary"
+                onClick={handleAIGenerate}
+                loading={aiLoading}
+                disabled={aiLoading}
+              >
+                {aiLoading ? 'AI 正在分析…' : '🤖 AI 自动填写复盘'}
+              </Button>
+              <p className="review-ai-fill-hint">
+                根据今天的记录{review?.target ? '和目标' : ''}，AI 自动生成差距分析、原因分析、推演思考和经验提炼。已有内容不会被覆盖。
+              </p>
+              {aiError && <p className="review-ai-error">{aiError}</p>}
+            </div>
+          )}
+
           {REVIEW_SECTIONS.map((section) => (
             <div key={section.key} className="review-section">
               <label className="review-section-label">{section.label}</label>

@@ -64,12 +64,12 @@ export function ThemeManagementPanel() {
   return (
     <div className="theme-management-panel">
       <div className="theme-management-header">
-        <h3>Work Themes</h3>
+        <h3>工作主题</h3>
         <Button
           onClick={handleClassify}
           loading={aiInFlight}
         >
-          Classify Projects
+          AI 分类项目
         </Button>
       </div>
 
@@ -77,7 +77,7 @@ export function ThemeManagementPanel() {
 
       {themes.length === 0 ? (
         <p className="theme-management-empty">
-          No themes classified yet. Click "Classify Projects" to auto-detect themes.
+          暂无主题分类。点击「AI 分类项目」按钮，自动识别工作主题。
         </p>
       ) : (
         <div className="theme-list">
@@ -86,13 +86,13 @@ export function ThemeManagementPanel() {
               {renamingTheme === theme ? (
                 <div className="theme-rename-form">
                   <Input
-                    label="New name"
+                    label="新名称"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder={theme}
                   />
-                  <Button size="sm" onClick={() => handleRename(theme)}>Save</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setRenamingTheme(null)}>Cancel</Button>
+                  <Button size="sm" onClick={() => handleRename(theme)}>保存</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setRenamingTheme(null)}>取消</Button>
                 </div>
               ) : (
                 <>
@@ -102,7 +102,7 @@ export function ThemeManagementPanel() {
                     variant="ghost"
                     onClick={() => { setRenamingTheme(theme); setNewName(theme); }}
                   >
-                    Rename
+                    重命名
                   </Button>
                 </>
               )}

@@ -1,9 +1,11 @@
-import type { Entry, Goal, Insight } from '../../lib/schema';
+import type { Entry, Goal, Insight, ReviewCase, Principle } from '../../lib/schema';
 import { createId } from '../../lib/ids';
 
 interface InsightInput {
   entries: Record<string, Entry>;
   goals: Record<string, Goal>;
+  reviewCases?: Record<string, ReviewCase>;
+  principles?: Record<string, Principle>;
   periodStart: string;
   periodEnd: string;
 }
@@ -14,13 +16,68 @@ interface InsightInput {
 export function generateInsights(input: InsightInput): Insight[] {
   const insights: Insight[] = [];
 
+  // Always generate a summary if there's any data
+  const summaryInsights = generateSummaryInsight(input);
+  insights.push(...summaryInsights);
+
   insights.push(...generateActivityDistributionInsight(input));
   insights.push(...generateReviewQualityInsight(input));
   insights.push(...generateGoalDriftInsight(input));
   insights.push(...generateStalledThemeInsight(input));
   insights.push(...generateTagFrequencyInsight(input));
+  insights.push(...generateConclusionsNeedingEvidenceInsight(input));
+  insights.push(...generateWeakWhyDepthInsight(input));
+  insights.push(...generateGoalsWithoutReviewInsight(input));
 
   return insights;
+}
+
+/**
+ * Always generate a baseline summary insight when data exists
+ */
+export function generateSummaryInsight(input: InsightInput): Insight[] {
+  const { entries, periodStart, periodEnd } = input;
+  const periodEntries = Object.values(entries).filter(
+    (e) => e.date >= periodStart && e.date <= periodEnd
+  );
+
+  if (periodEntries.length === 0) return [];
+
+  const totalBullets = periodEntries.reduce(
+    (sum, e) => sum + e.bullets.work.length + e.bullets.study.length + e.bullets.side.length,
+    0
+  );
+  const reviewedDays = periodEntries.filter((e) => e.review && (
+    e.review.target || e.review.gap || e.review.reason || e.review.lesson
+  )).length;
+  const daysWithBullets = periodEntries.filter(
+    (e) => e.bullets.work.length + e.bullets.study.length + e.bullets.side.length > 0
+  ).length;
+
+  const summary = `本周期共 ${periodEntries.length} 天，${daysWithBullets} 天有记录，共 ${totalBullets} 条事项。其中 ${reviewedDays} 天进行了结构化复盘。`;
+
+  const suggestions: string[] = [];
+  if (daysWithBullets < periodEntries.length) {
+    suggestions.push(`有 ${periodEntries.length - daysWithBullets} 天没有记录，建议保持每日打卡习惯。`);
+  }
+  if (reviewedDays === 0 && daysWithBullets > 0) {
+    suggestions.push('有记录但没有复盘，建议展开复盘区域填写目标和差距分析。');
+  }
+  if (reviewedDays > 0 && reviewedDays < daysWithBullets) {
+    suggestions.push(`${daysWithBullets - reviewedDays} 天有记录但未复盘，建议每天花 2 分钟填写复盘。`);
+  }
+
+  return [{
+    id: createId(),
+    type: 'activity-distribution',
+    title: '本周期概览',
+    summary: suggestions.length > 0 ? `${summary}\n${suggestions.join('\n')}` : summary,
+    severity: 'info',
+    periodStart,
+    periodEnd,
+    evidenceRefs: [],
+    createdAt: new Date().toISOString(),
+  }];
 }
 
 /**
@@ -245,6 +302,114 @@ export function generateTagFrequencyInsight(input: InsightInput): Insight[] {
       evidenceRefs: [],
       createdAt: new Date().toISOString(),
     });
+  }
+
+  return insights;
+}
+
+/**
+ * Conclusions needing evidence insight
+ */
+export function generateConclusionsNeedingEvidenceInsight(input: InsightInput): Insight[] {
+  const { reviewCases, periodStart, periodEnd } = input;
+  if (!reviewCases) return [];
+
+  const periodCases = Object.values(reviewCases).filter(
+    (rc) => rc.startDate >= periodStart && rc.endDate <= periodEnd
+  );
+
+  const insights: Insight[] = [];
+
+  for (const rc of periodCases) {
+    const needsEvidence = rc.conclusions.filter(
+      (c) => c.quality.verdict === 'needs-evidence'
+    );
+
+    if (needsEvidence.length > 0) {
+      insights.push({
+        id: createId(),
+        type: 'recurring-problem',
+        title: `复盘"${rc.title}"有结论需要补证据`,
+        summary: `${needsEvidence.length} 条结论缺少交叉验证。建议补充证据以提高结论可信度。`,
+        severity: 'warning',
+        periodStart,
+        periodEnd,
+        evidenceRefs: [],
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  return insights;
+}
+
+/**
+ * Weak why depth insight
+ */
+export function generateWeakWhyDepthInsight(input: InsightInput): Insight[] {
+  const { reviewCases, periodStart, periodEnd } = input;
+  if (!reviewCases) return [];
+
+  const periodCases = Object.values(reviewCases).filter(
+    (rc) => rc.startDate >= periodStart && rc.endDate <= periodEnd
+  );
+
+  const insights: Insight[] = [];
+
+  for (const rc of periodCases) {
+    const maxWhyDepth = rc.steps.causeAnalysis.whys.length > 0
+      ? Math.max(...rc.steps.causeAnalysis.whys.map((w) => w.depth))
+      : 0;
+
+    if (maxWhyDepth > 0 && maxWhyDepth < 3) {
+      insights.push({
+        id: createId(),
+        type: 'review-quality',
+        title: `复盘"${rc.title}"追问深度不足`,
+        summary: `Why 追问只到第 ${maxWhyDepth} 层，建议至少追问到第 3 层以发现根因。`,
+        severity: 'info',
+        periodStart,
+        periodEnd,
+        evidenceRefs: [],
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  return insights;
+}
+
+/**
+ * Goals without review insight
+ */
+export function generateGoalsWithoutReviewInsight(input: InsightInput): Insight[] {
+  const { goals, reviewCases, periodStart, periodEnd } = input;
+  if (!reviewCases) return [];
+
+  const activeGoals = Object.values(goals).filter(
+    (g) => g.status === 'active' && g.startDate >= periodStart && g.endDate <= periodEnd
+  );
+
+  const reviewCaseGoalIds = new Set(
+    Object.values(reviewCases).flatMap((rc) => rc.linkedGoalIds)
+  );
+
+  const insights: Insight[] = [];
+
+  for (const goal of activeGoals) {
+    if (!reviewCaseGoalIds.has(goal.id)) {
+      insights.push({
+        id: createId(),
+        type: 'goal-drift',
+        title: `目标"${goal.title}"缺少复盘`,
+        summary: '该目标没有关联任何复盘案例，建议定期复盘目标进展。',
+        severity: 'info',
+        periodStart,
+        periodEnd,
+        evidenceRefs: [],
+        createdAt: new Date().toISOString(),
+      });
+    }
   }
 
   return insights;
