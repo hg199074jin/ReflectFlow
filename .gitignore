@@ -33,6 +33,9 @@ coverage/
 test-results/
 playwright-report/
 
+# Docs (AI-generated plans/specs)
+docs/
+
 # Claude Code
 .claude/settings.local.json
 CLAUDE.md
