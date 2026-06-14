@@ -33,5 +33,7 @@ coverage/
 test-results/
 playwright-report/
 
-# Claude Code local settings
+# Claude Code
 .claude/settings.local.json
+CLAUDE.md
+CLAUDE-FABLE-5.md
