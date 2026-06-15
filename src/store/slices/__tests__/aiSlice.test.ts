@@ -41,3 +41,40 @@ describe('aiSlice', () => {
     expect(store.getState().aiInFlight).not.toHaveProperty('nonexistent');
   });
 });
+
+describe('streamingStates', () => {
+  let store: StoreApi<AISlice>;
+
+  beforeEach(() => {
+    store = create<AISlice>(
+      createAISlice as StateCreator<AISlice, [], [], AISlice>
+    );
+  });
+
+  it('startStreaming creates a new stream', () => {
+    store.getState().startStreaming('s1', 'goal-decompose', 'g1');
+    const s = store.getState().streamingStates['s1']!;
+    expect(s.feature).toBe('goal-decompose');
+    expect(s.status).toBe('streaming');
+  });
+
+  it('updateStreaming appends chunk', () => {
+    store.getState().startStreaming('s1', 'goal-decompose', 'g1');
+    store.getState().updateStreaming('s1', 'chunk-');
+    expect(store.getState().streamingStates['s1']!.accumulated).toBe('chunk-');
+  });
+
+  it('finishStreaming sets status to done', () => {
+    store.getState().startStreaming('s1', 'goal-decompose', 'g1');
+    store.getState().finishStreaming('s1');
+    expect(store.getState().streamingStates['s1']!.status).toBe('done');
+  });
+
+  it('failStreaming sets status to error', () => {
+    store.getState().startStreaming('s1', 'goal-decompose', 'g1');
+    store.getState().failStreaming('s1', 'oops');
+    const s = store.getState().streamingStates['s1']!;
+    expect(s.status).toBe('error');
+    expect(s.error).toBe('oops');
+  });
+});
