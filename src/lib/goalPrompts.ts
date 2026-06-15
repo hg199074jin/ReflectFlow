@@ -197,3 +197,103 @@ ${gapReasonsText}
   "suggestedTomorrowTask": "..."
 }`;
 }
+
+/**
+ * 目标质量评估
+ * 根据目标的各个维度评估目标质量，输出 10 个维度的评分以及总分。
+ */
+export function buildGoalQualityPrompt(goal: Goal): string {
+  const goalInfo = JSON.stringify(goal, null, 2);
+
+  return `你是 ReflectFlow 的目标质量评估教练。
+
+请根据以下目标信息，从 10 个维度评估目标质量，每个维度 0-10 分，总分 0-100 分。
+
+评估维度：
+1. 具体性 (specificityScore)：目标是否足够具体，不含模糊表述
+2. 可衡量性 (measurabilityScore)：是否有明确的衡量标准或指标
+3. 时间约束 (timeBoundScore)：是否有清晰的截止日期和阶段性时间节点
+4. 现状描述 (currentStateScore)：是否清楚描述了当前起点
+5. 成功标准 (successCriteriaScore)：成功标准是否可观察、可判断
+6. 约束条件 (constraintsScore)：是否列出了现实约束
+7. 可拆解性 (decomposabilityScore)：目标是否可以拆解为可执行的小任务
+8. 现实性 (realismScore)：目标在给定时间和资源下是否现实可行
+9. 冲突性 (conflictScore)：目标是否存在内部矛盾或与其他目标的冲突
+10. 复盘价值 (reviewValueScore)：目标完成后的复盘价值和经验沉淀潜力
+
+要求：
+1. 评分必须有依据，不要随意给分；
+2. strengths 列出目标做得好的方面；
+3. weaknesses 列出目标需要改进的地方；
+4. suggestions 给出具体可操作的改进建议；
+5. 输出 JSON，不要输出 Markdown。
+
+目标信息：
+${goalInfo}
+
+请输出以下 JSON：
+
+{
+  "totalScore": 0-100,
+  "specificityScore": 0-10,
+  "measurabilityScore": 0-10,
+  "timeBoundScore": 0-10,
+  "currentStateScore": 0-10,
+  "successCriteriaScore": 0-10,
+  "constraintsScore": 0-10,
+  "decomposabilityScore": 0-10,
+  "realismScore": 0-10,
+  "conflictScore": 0-10,
+  "reviewValueScore": 0-10,
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "suggestions": ["..."]
+}`;
+}
+
+/**
+ * 目标冲突检测
+ * 分析所有活跃目标，检测时间、精力、优先级、资源、方向、身份和长短目标之间的冲突。
+ */
+export function buildConflictDetectionPrompt(goals: Goal[]): string {
+  const goalsInfo = JSON.stringify(goals, null, 2);
+
+  return `你是 ReflectFlow 的目标冲突检测教练。
+
+请分析以下所有活跃目标，检测是否存在冲突。
+
+冲突类型包括：
+- time_conflict：时间冲突，多个目标争夺同一时间段
+- energy_conflict：精力冲突，多个目标同时消耗大量精力
+- priority_conflict：优先级冲突，多个高优先级目标难以同时推进
+- resource_conflict：资源冲突，多个目标需要相同的稀缺资源
+- direction_conflict：方向冲突，多个目标的方向或路径相互矛盾
+- identity_conflict：身份冲突，目标与用户当前身份或角色不匹配
+- short_long_term_conflict：短长期冲突，短期目标与长期目标相互矛盾
+
+要求：
+1. 只报告真实存在的冲突，不要臆造；
+2. 每个冲突必须有明确的证据；
+3. severity 根据冲突的紧迫程度和影响范围判断；
+4. suggestion 必须给出具体可操作的解决方案；
+5. 如果没有冲突，返回空数组；
+6. 输出 JSON，不要输出 Markdown。
+
+目标列表：
+${goalsInfo}
+
+请输出以下 JSON：
+
+{
+  "conflicts": [
+    {
+      "goalIds": ["目标ID1", "目标ID2"],
+      "type": "time_conflict | energy_conflict | priority_conflict | resource_conflict | direction_conflict | identity_conflict | short_long_term_conflict",
+      "severity": "low | medium | high",
+      "description": "冲突描述",
+      "evidence": ["证据1", "证据2"],
+      "suggestion": "解决建议"
+    }
+  ]
+}`;
+}

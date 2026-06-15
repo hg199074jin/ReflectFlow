@@ -5,6 +5,8 @@ import {
   buildCompleteGoalDefinitionPrompt,
   buildDecomposeGoalPrompt,
   buildDailyAdjustmentPrompt,
+  buildGoalQualityPrompt,
+  buildConflictDetectionPrompt,
 } from '../lib/goalPrompts';
 import type { LLMSettings } from './llm/types';
 import type { Goal, DailyGoalTarget, GapReason } from '../lib/schema';
@@ -168,4 +170,88 @@ export async function suggestDailyAdjustment(
   if (error) return { success: false, raw: fullText, error: error.message };
 
   return parseAIJSON<DailyAdjustmentResult>(fullText, dailyAdjustmentResultSchema);
+}
+
+// ---------------------------------------------------------------------------
+// 4. scoreGoalQuality
+// ---------------------------------------------------------------------------
+
+const goalQualityResultSchema = z.object({
+  totalScore: z.number(),
+  specificityScore: z.number(),
+  measurabilityScore: z.number(),
+  timeBoundScore: z.number(),
+  currentStateScore: z.number(),
+  successCriteriaScore: z.number(),
+  constraintsScore: z.number(),
+  decomposabilityScore: z.number(),
+  realismScore: z.number(),
+  conflictScore: z.number(),
+  reviewValueScore: z.number(),
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  suggestions: z.array(z.string()),
+});
+export type GoalQualityResult = z.infer<typeof goalQualityResultSchema>;
+
+/**
+ * Call AI to score a goal's quality across 10 dimensions.
+ */
+export async function scoreGoalQuality(
+  goal: Goal,
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal },
+): Promise<GoalAIResult<GoalQualityResult>> {
+  const userPrompt = buildGoalQualityPrompt(goal);
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a helpful goal quality assessment coach. Always respond with valid JSON only.' },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  if (error) return { success: false, raw: fullText, error: error.message };
+
+  return parseAIJSON<GoalQualityResult>(fullText, goalQualityResultSchema);
+}
+
+// ---------------------------------------------------------------------------
+// 5. detectGoalConflicts
+// ---------------------------------------------------------------------------
+
+const conflictItemSchema = z.object({
+  goalIds: z.array(z.string()),
+  type: z.enum([
+    'time_conflict', 'energy_conflict', 'priority_conflict',
+    'resource_conflict', 'direction_conflict', 'identity_conflict',
+    'short_long_term_conflict',
+  ]),
+  severity: z.enum(['low', 'medium', 'high']),
+  description: z.string(),
+  evidence: z.array(z.string()),
+  suggestion: z.string(),
+});
+
+const conflictDetectionResultSchema = z.object({
+  conflicts: z.array(conflictItemSchema),
+});
+export type ConflictDetectionResult = z.infer<typeof conflictDetectionResultSchema>;
+
+/**
+ * Call AI to detect conflicts among multiple active goals.
+ */
+export async function detectGoalConflicts(
+  goals: Goal[],
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal },
+): Promise<GoalAIResult<ConflictDetectionResult>> {
+  const userPrompt = buildConflictDetectionPrompt(goals);
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a helpful goal conflict detection coach. Always respond with valid JSON only.' },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  if (error) return { success: false, raw: fullText, error: error.message };
+
+  return parseAIJSON<ConflictDetectionResult>(fullText, conflictDetectionResultSchema);
 }
