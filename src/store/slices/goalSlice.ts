@@ -1,17 +1,36 @@
-import type { Goal } from '../../lib/schema';
+import type { Goal, GoalPlan, DailyGoalTarget } from '../../lib/schema';
+import type { GoalDefinitionResult } from '../../services/goalAI';
 import type { SliceCreator } from './sliceTypes';
-import { saveGoal, deleteGoal as deleteGoalFromDB } from '../persistence';
+import {
+  saveGoal, deleteGoal as deleteGoalFromDB,
+  saveGoalPlan, saveDailyGoalTarget, updateDailyGoalTarget as updateDailyGoalTargetDB,
+} from '../persistence';
 
 export interface GoalSlice {
+  // existing
   goals: Record<string, Goal>;
   upsertGoal: (goal: Goal) => Promise<void>;
   deleteGoal: (goalId: string) => Promise<void>;
   linkBulletToGoal: (goalId: string, ref: { entryId: string; bulletId: string }) => Promise<void>;
   unlinkBulletFromGoal: (goalId: string, bulletId: string) => Promise<void>;
+
+  // new state
+  goalPlans: Record<string, GoalPlan>;
+  dailyGoalTargets: Record<string, DailyGoalTarget>;
+
+  // new actions
+  addGoalPlan: (plan: GoalPlan) => void;
+  addDailyGoalTarget: (target: DailyGoalTarget) => void;
+  addDailyGoalTargets: (targets: DailyGoalTarget[]) => void;
+  updateDailyGoalTarget: (id: string, patch: Partial<DailyGoalTarget>) => void;
+  getDailyTargetsByDate: (date: string) => DailyGoalTarget[];
+  applyGoalDefinitionResult: (goalId: string, result: GoalDefinitionResult) => void;
 }
 
 export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
   goals: {},
+  goalPlans: {},
+  dailyGoalTargets: {},
 
   upsertGoal: async (goal) => {
     const { goals } = get();
@@ -58,5 +77,70 @@ export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
     };
     set({ goals: { ...goals, [goalId]: updated } });
     await saveGoal(updated);
+  },
+
+  // --- Goal Plans ---
+
+  addGoalPlan: (plan) => {
+    const { goalPlans } = get();
+    set({ goalPlans: { ...goalPlans, [plan.id]: plan } });
+    saveGoalPlan(plan);
+  },
+
+  // --- Daily Goal Targets ---
+
+  addDailyGoalTarget: (target) => {
+    const { dailyGoalTargets } = get();
+    set({ dailyGoalTargets: { ...dailyGoalTargets, [target.id]: target } });
+    saveDailyGoalTarget(target);
+  },
+
+  addDailyGoalTargets: (targets) => {
+    const { dailyGoalTargets } = get();
+    const updated = { ...dailyGoalTargets };
+    for (const t of targets) {
+      updated[t.id] = t;
+      saveDailyGoalTarget(t);
+    }
+    set({ dailyGoalTargets: updated });
+  },
+
+  updateDailyGoalTarget: (id, patch) => {
+    const { dailyGoalTargets } = get();
+    const existing = dailyGoalTargets[id];
+    if (!existing) return;
+
+    const merged: DailyGoalTarget = {
+      ...existing,
+      ...patch,
+      id: existing.id, // prevent id override
+      updatedAt: new Date().toISOString(),
+    };
+    set({ dailyGoalTargets: { ...dailyGoalTargets, [id]: merged } });
+    updateDailyGoalTargetDB(merged);
+  },
+
+  getDailyTargetsByDate: (date) => {
+    const { dailyGoalTargets } = get();
+    return Object.values(dailyGoalTargets).filter((t) => t.date === date);
+  },
+
+  // --- AI Definition ---
+
+  applyGoalDefinitionResult: (goalId, result) => {
+    const { goals } = get();
+    const goal = goals[goalId];
+    if (!goal) return;
+
+    const updated: Goal = {
+      ...goal,
+      successCriteria: result.successCriteria,
+      constraints: result.constraints,
+      risks: result.risks,
+      acceptanceMethod: result.acceptanceMethod,
+      updatedAt: new Date().toISOString(),
+    };
+    set({ goals: { ...goals, [goalId]: updated } });
+    saveGoal(updated);
   },
 });
