@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTimelineStore } from '../../store';
 import type { DailyGoalStatus, GapReason } from '../../lib/schema';
 
@@ -26,8 +27,9 @@ const GAP_REASON_LABELS: Record<GapReason, string> = {
 };
 
 export function DailyGoalReviewPanel({ date }: Props) {
-  const targets = useTimelineStore(s => s.getDailyTargetsByDate(date));
+  const dailyGoalTargets = useTimelineStore(s => s.dailyGoalTargets);
   const updateDailyGoalTarget = useTimelineStore(s => s.updateDailyGoalTarget);
+  const targets = useMemo(() => Object.values(dailyGoalTargets).filter(t => t.date === date), [dailyGoalTargets, date]);
 
   if (targets.length === 0) {
     return <div className="text-sm text-gray-500">今日无目标牵引</div>;
