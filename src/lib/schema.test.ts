@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { entrySchema, settingsSchema, categorySchema } from './schema';
+import { entrySchema, settingsSchema, categorySchema, goalStatusSchema, goalSchema } from './schema';
 
 describe('categorySchema', () => {
   it('accepts valid categories', () => {
@@ -81,5 +81,47 @@ describe('settingsSchema', () => {
   it('rejects invalid folder structure', () => {
     const bad = { ...validSettings, export: { ...validSettings.export, folderStructure: 'bad' } };
     expect(() => settingsSchema.parse(bad)).toThrow();
+  });
+});
+
+describe('goalStatusSchema', () => {
+  it('accepts draft as a valid goal status', () => {
+    expect(goalStatusSchema.parse('draft')).toBe('draft');
+  });
+});
+
+describe('goalSchema backward compatibility', () => {
+  it('accepts legacy goal without new fields', () => {
+    const legacy = {
+      id: 'g1', title: 'Test', period: 'month',
+      startDate: '2026-06-01', endDate: '2026-07-01',
+      status: 'active', linkedBullets: [],
+      createdAt: '', updatedAt: '',
+    };
+    expect(goalSchema.parse(legacy)).toBeDefined();
+  });
+
+  it('preserves notes field on legacy goals', () => {
+    const legacy = {
+      id: 'g1', title: 'Test', period: 'month',
+      startDate: '2026-06-01', endDate: '2026-07-01',
+      status: 'active', linkedBullets: [],
+      notes: 'some legacy notes',
+      createdAt: '', updatedAt: '',
+    };
+    const parsed = goalSchema.parse(legacy);
+    expect(parsed.notes).toBe('some legacy notes');
+  });
+
+  it('preserves linkedBullets array on legacy goals', () => {
+    const legacy = {
+      id: 'g1', title: 'Test', period: 'month',
+      startDate: '2026-06-01', endDate: '2026-07-01',
+      status: 'active',
+      linkedBullets: [{ entryId: 'e1', bulletId: 'b1' }],
+      createdAt: '', updatedAt: '',
+    };
+    const parsed = goalSchema.parse(legacy);
+    expect(parsed.linkedBullets).toEqual([{ entryId: 'e1', bulletId: 'b1' }]);
   });
 });

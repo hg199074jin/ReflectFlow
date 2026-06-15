@@ -142,7 +142,7 @@ export type EvidenceRef = z.infer<typeof evidenceRefSchema>;
 export const goalPeriodSchema = z.enum(['week', 'month']);
 export type GoalPeriod = z.infer<typeof goalPeriodSchema>;
 
-export const goalStatusSchema = z.enum(['active', 'done', 'paused', 'dropped']);
+export const goalStatusSchema = z.enum(['draft', 'active', 'done', 'paused', 'dropped']);
 export type GoalStatus = z.infer<typeof goalStatusSchema>;
 
 export const goalSchema = z.object({
@@ -154,10 +154,36 @@ export const goalSchema = z.object({
   status: goalStatusSchema,
   linkedBullets: z.array(projectRefSchema),
   notes: z.string().optional(),
+  currentState: z.string().optional(),
+  desiredOutcome: z.string().optional(),
+  availableTime: z.string().optional(),
+  successCriteria: z.array(z.string()).optional(),
+  constraints: z.array(z.string()).optional(),
+  risks: z.array(z.string()).optional(),
+  acceptanceMethod: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
+  successCriteriaSource: z.enum(['user', 'ai', 'mixed']).optional(),
+  constraintsSource: z.enum(['user', 'ai', 'mixed']).optional(),
   ai: z.object({
     progressSummary: z.string().optional(),
     risk: z.string().optional(),
     nextAction: z.string().optional(),
+    qualityScore: z.number().optional(),
+    qualityDetails: z.object({
+      specificityScore: z.number(),
+      measurabilityScore: z.number(),
+      timeBoundScore: z.number(),
+      currentStateScore: z.number(),
+      successCriteriaScore: z.number(),
+      constraintsScore: z.number(),
+      decomposabilityScore: z.number(),
+      realismScore: z.number(),
+      conflictScore: z.number(),
+      reviewValueScore: z.number(),
+    }).optional(),
+    qualityStrengths: z.array(z.string()).optional(),
+    qualityWeaknesses: z.array(z.string()).optional(),
+    qualitySuggestions: z.array(z.string()).optional(),
   }).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
