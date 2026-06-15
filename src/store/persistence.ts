@@ -6,10 +6,13 @@ import {
   type Entry, type Settings, type WeeklyReview,
   type Goal, type GeneratedReport, type Insight,
   type ReviewCase, type PreviewPlan, type Principle,
+  type GoalPlan, type DailyGoalTarget, type GoalConflict,
+  type WeeklyGoalReview, type GoalFinalReport,
+  type GoalPrincipleExtraction, type GoalPremortem, type GoalPremortemReview,
 } from '../lib/schema';
 
-const DB_NAME = 'timeline-db';
-const DB_VERSION = 4;
+export const DB_NAME = 'timeline-db';
+export const DB_VERSION = 5;
 const ENTRIES_STORE = 'entries';
 const SETTINGS_STORE = 'settings';
 const WEEKLY_REVIEWS_STORE = 'weeklyReviews';
@@ -19,6 +22,14 @@ const INSIGHTS_STORE = 'insights';
 const REVIEW_CASES_STORE = 'reviewCases';
 const PREVIEW_PLANS_STORE = 'previewPlans';
 const PRINCIPLES_STORE = 'principles';
+const GOAL_PLANS_STORE = 'goalPlans';
+const DAILY_GOAL_TARGETS_STORE = 'dailyGoalTargets';
+const GOAL_CONFLICTS_STORE = 'goalConflicts';
+const WEEKLY_GOAL_REVIEWS_STORE = 'weeklyGoalReviews';
+const GOAL_FINAL_REPORTS_STORE = 'goalFinalReports';
+const GOAL_PRINCIPLE_EXTRACTIONS_STORE = 'goalPrincipleExtractions';
+const GOAL_PREMORTEMS_STORE = 'goalPremortems';
+const GOAL_PREMORTEM_REVIEWS_STORE = 'goalPremortemReviews';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -58,6 +69,36 @@ function getDB() {
           }
           if (!db.objectStoreNames.contains(PRINCIPLES_STORE)) {
             db.createObjectStore(PRINCIPLES_STORE, { keyPath: 'id' });
+          }
+        }
+        // Version 5: add goal-related stores
+        if (oldVersion < 5) {
+          if (!db.objectStoreNames.contains(GOAL_PLANS_STORE)) {
+            const s = db.createObjectStore(GOAL_PLANS_STORE, { keyPath: 'id' });
+            s.createIndex('byGoal', 'goalId', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(DAILY_GOAL_TARGETS_STORE)) {
+            const s = db.createObjectStore(DAILY_GOAL_TARGETS_STORE, { keyPath: 'id' });
+            s.createIndex('byGoal', 'goalId', { unique: false });
+            s.createIndex('byDate', 'date', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(GOAL_CONFLICTS_STORE)) {
+            db.createObjectStore(GOAL_CONFLICTS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(WEEKLY_GOAL_REVIEWS_STORE)) {
+            db.createObjectStore(WEEKLY_GOAL_REVIEWS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(GOAL_FINAL_REPORTS_STORE)) {
+            db.createObjectStore(GOAL_FINAL_REPORTS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(GOAL_PRINCIPLE_EXTRACTIONS_STORE)) {
+            db.createObjectStore(GOAL_PRINCIPLE_EXTRACTIONS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(GOAL_PREMORTEMS_STORE)) {
+            db.createObjectStore(GOAL_PREMORTEMS_STORE, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(GOAL_PREMORTEM_REVIEWS_STORE)) {
+            db.createObjectStore(GOAL_PREMORTEM_REVIEWS_STORE, { keyPath: 'id' });
           }
         }
       },
@@ -219,7 +260,7 @@ export async function clearInsights(): Promise<void> {
 export async function clearAllData(): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    [ENTRIES_STORE, SETTINGS_STORE, WEEKLY_REVIEWS_STORE, GOALS_STORE, REPORTS_STORE, INSIGHTS_STORE, REVIEW_CASES_STORE, PREVIEW_PLANS_STORE, PRINCIPLES_STORE],
+    [ENTRIES_STORE, SETTINGS_STORE, WEEKLY_REVIEWS_STORE, GOALS_STORE, REPORTS_STORE, INSIGHTS_STORE, REVIEW_CASES_STORE, PREVIEW_PLANS_STORE, PRINCIPLES_STORE, GOAL_PLANS_STORE, DAILY_GOAL_TARGETS_STORE, GOAL_CONFLICTS_STORE, WEEKLY_GOAL_REVIEWS_STORE, GOAL_FINAL_REPORTS_STORE, GOAL_PRINCIPLE_EXTRACTIONS_STORE, GOAL_PREMORTEMS_STORE, GOAL_PREMORTEM_REVIEWS_STORE],
     'readwrite'
   );
   await Promise.all([
@@ -232,6 +273,14 @@ export async function clearAllData(): Promise<void> {
     tx.objectStore(REVIEW_CASES_STORE).clear(),
     tx.objectStore(PREVIEW_PLANS_STORE).clear(),
     tx.objectStore(PRINCIPLES_STORE).clear(),
+    tx.objectStore(GOAL_PLANS_STORE).clear(),
+    tx.objectStore(DAILY_GOAL_TARGETS_STORE).clear(),
+    tx.objectStore(GOAL_CONFLICTS_STORE).clear(),
+    tx.objectStore(WEEKLY_GOAL_REVIEWS_STORE).clear(),
+    tx.objectStore(GOAL_FINAL_REPORTS_STORE).clear(),
+    tx.objectStore(GOAL_PRINCIPLE_EXTRACTIONS_STORE).clear(),
+    tx.objectStore(GOAL_PREMORTEMS_STORE).clear(),
+    tx.objectStore(GOAL_PREMORTEM_REVIEWS_STORE).clear(),
     tx.done,
   ]);
 }
@@ -312,4 +361,99 @@ export async function savePrinciple(principle: Principle): Promise<void> {
 export async function deletePrinciple(principleId: string): Promise<void> {
   const db = await getDB();
   await db.delete(PRINCIPLES_STORE, principleId);
+}
+
+// Goal Plans
+export async function saveGoalPlan(plan: GoalPlan): Promise<void> {
+  const db = await getDB();
+  await db.put(GOAL_PLANS_STORE, plan);
+}
+export async function loadGoalPlans(): Promise<GoalPlan[]> {
+  const db = await getDB();
+  return db.getAll(GOAL_PLANS_STORE);
+}
+export async function deleteGoalPlan(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(GOAL_PLANS_STORE, id);
+}
+
+// Daily Goal Targets
+export async function saveDailyGoalTarget(target: DailyGoalTarget): Promise<void> {
+  const db = await getDB();
+  await db.put(DAILY_GOAL_TARGETS_STORE, target);
+}
+export async function loadDailyGoalTargets(): Promise<DailyGoalTarget[]> {
+  const db = await getDB();
+  return db.getAll(DAILY_GOAL_TARGETS_STORE);
+}
+export async function updateDailyGoalTarget(target: DailyGoalTarget): Promise<void> {
+  return saveDailyGoalTarget(target);
+}
+export async function deleteDailyGoalTarget(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(DAILY_GOAL_TARGETS_STORE, id);
+}
+
+// Goal Conflicts
+export async function saveGoalConflict(c: GoalConflict): Promise<void> {
+  const db = await getDB();
+  await db.put(GOAL_CONFLICTS_STORE, c);
+}
+export async function loadGoalConflicts(): Promise<GoalConflict[]> {
+  const db = await getDB();
+  return db.getAll(GOAL_CONFLICTS_STORE);
+}
+export async function deleteGoalConflict(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(GOAL_CONFLICTS_STORE, id);
+}
+
+// Weekly Goal Reviews
+export async function saveWeeklyGoalReview(r: WeeklyGoalReview): Promise<void> {
+  const db = await getDB();
+  await db.put(WEEKLY_GOAL_REVIEWS_STORE, r);
+}
+export async function loadWeeklyGoalReviews(): Promise<WeeklyGoalReview[]> {
+  const db = await getDB();
+  return db.getAll(WEEKLY_GOAL_REVIEWS_STORE);
+}
+
+// Goal Final Reports
+export async function saveGoalFinalReport(r: GoalFinalReport): Promise<void> {
+  const db = await getDB();
+  await db.put(GOAL_FINAL_REPORTS_STORE, r);
+}
+export async function loadGoalFinalReports(): Promise<GoalFinalReport[]> {
+  const db = await getDB();
+  return db.getAll(GOAL_FINAL_REPORTS_STORE);
+}
+
+// Goal Principle Extractions
+export async function saveGoalPrincipleExtraction(p: GoalPrincipleExtraction): Promise<void> {
+  const db = await getDB();
+  await db.put(GOAL_PRINCIPLE_EXTRACTIONS_STORE, p);
+}
+export async function loadGoalPrincipleExtractions(): Promise<GoalPrincipleExtraction[]> {
+  const db = await getDB();
+  return db.getAll(GOAL_PRINCIPLE_EXTRACTIONS_STORE);
+}
+
+// Goal Premortems
+export async function saveGoalPremortem(p: GoalPremortem): Promise<void> {
+  const db = await getDB();
+  await db.put(GOAL_PREMORTEMS_STORE, p);
+}
+export async function loadGoalPremortems(): Promise<GoalPremortem[]> {
+  const db = await getDB();
+  return db.getAll(GOAL_PREMORTEMS_STORE);
+}
+
+// Goal Premortem Reviews
+export async function saveGoalPremortemReview(r: GoalPremortemReview): Promise<void> {
+  const db = await getDB();
+  await db.put(GOAL_PREMORTEM_REVIEWS_STORE, r);
+}
+export async function loadGoalPremortemReviews(): Promise<GoalPremortemReview[]> {
+  const db = await getDB();
+  return db.getAll(GOAL_PREMORTEM_REVIEWS_STORE);
 }
