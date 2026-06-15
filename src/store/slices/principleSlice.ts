@@ -1,0 +1,57 @@
+import type { Principle, ReviewCase } from '../../lib/schema';
+import type { SliceCreator } from './sliceTypes';
+import { createId } from '../../lib/ids';
+import { savePrinciple, deletePrinciple as deletePrincipleFromDB } from '../persistence';
+
+export interface PrincipleSlice {
+  principles: Record<string, Principle>;
+  upsertPrinciple: (principle: Principle) => Promise<void>;
+  deletePrinciple: (principleId: string) => Promise<void>;
+  promoteConclusionToPrinciple: (reviewCaseId: string, conclusionId: string) => Promise<void>;
+}
+
+export const createPrincipleSlice: SliceCreator<PrincipleSlice> = (set, get) => ({
+  principles: {},
+
+  upsertPrinciple: async (principle) => {
+    const { principles } = get();
+    set({ principles: { ...principles, [principle.id]: principle } });
+    await savePrinciple(principle);
+  },
+
+  deletePrinciple: async (principleId) => {
+    const { principles } = get();
+    const { [principleId]: _, ...rest } = principles;
+    set({ principles: rest });
+    await deletePrincipleFromDB(principleId);
+  },
+
+  promoteConclusionToPrinciple: async (reviewCaseId, conclusionId) => {
+    const { principles } = get();
+    // Access reviewCases from the full composed store
+    const { reviewCases } = get() as unknown as { reviewCases: Record<string, ReviewCase> };
+    const reviewCase = reviewCases[reviewCaseId];
+    if (!reviewCase) return;
+
+    const conclusion = reviewCase.conclusions.find((c) => c.id === conclusionId);
+    if (!conclusion) return;
+
+    const now = new Date().toISOString();
+    const principle: Principle = {
+      id: createId(),
+      title: conclusion.title,
+      content: conclusion.content,
+      sourceConclusionId: conclusionId,
+      sourceReviewCaseId: reviewCaseId,
+      evidenceRefs: conclusion.evidenceRefs,
+      applicableContexts: [],
+      boundaries: conclusion.boundary ? [conclusion.boundary] : [],
+      verificationStatus: 'unverified',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    set({ principles: { ...principles, [principle.id]: principle } });
+    await savePrinciple(principle);
+  },
+});
