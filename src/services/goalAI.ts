@@ -7,6 +7,7 @@ import {
   buildDailyAdjustmentPrompt,
   buildGoalQualityPrompt,
   buildConflictDetectionPrompt,
+  buildWeeklyGoalReviewPrompt,
 } from '../lib/goalPrompts';
 import type { LLMSettings } from './llm/types';
 import type { Goal, DailyGoalTarget, GapReason } from '../lib/schema';
@@ -254,4 +255,46 @@ export async function detectGoalConflicts(
   if (error) return { success: false, raw: fullText, error: error.message };
 
   return parseAIJSON<ConflictDetectionResult>(fullText, conflictDetectionResultSchema);
+}
+
+// ---------------------------------------------------------------------------
+// 6. generateWeeklyGoalReview
+// ---------------------------------------------------------------------------
+
+const weeklyGoalReviewResultSchema = z.object({
+  completionSummary: z.string(),
+  completedTargets: z.number(),
+  missedTargets: z.number(),
+  adjustedTargets: z.number(),
+  mainDeviations: z.array(z.string()),
+  recurringBlockers: z.array(z.string()),
+  effectiveActions: z.array(z.string()),
+  ineffectiveActions: z.array(z.string()),
+  nextWeekSuggestions: z.array(z.string()),
+  goalsToPrioritize: z.array(z.string()),
+  goalsToPause: z.array(z.string()),
+});
+export type WeeklyGoalReviewResult = z.infer<typeof weeklyGoalReviewResultSchema>;
+
+/**
+ * Call AI to generate a weekly goal review with calibration suggestions.
+ */
+export async function generateWeeklyGoalReview(
+  weekStart: string,
+  weekEnd: string,
+  goals: Goal[],
+  dailyTargets: DailyGoalTarget[],
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal },
+): Promise<GoalAIResult<WeeklyGoalReviewResult>> {
+  const userPrompt = buildWeeklyGoalReviewPrompt(weekStart, weekEnd, goals, dailyTargets);
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a helpful weekly goal review coach. Always respond with valid JSON only.' },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  if (error) return { success: false, raw: fullText, error: error.message };
+
+  return parseAIJSON<WeeklyGoalReviewResult>(fullText, weeklyGoalReviewResultSchema);
 }

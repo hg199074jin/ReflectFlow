@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTimelineStore } from '../../store';
+import { suggestDailyAdjustment } from '../../services/goalAI';
+import { Button } from '../../components/primitives/Button';
 import type { DailyGoalStatus, GapReason } from '../../lib/schema';
 
 interface Props {
@@ -29,7 +31,28 @@ const GAP_REASON_LABELS: Record<GapReason, string> = {
 export function DailyGoalReviewPanel({ date }: Props) {
   const dailyGoalTargets = useTimelineStore(s => s.dailyGoalTargets);
   const updateDailyGoalTarget = useTimelineStore(s => s.updateDailyGoalTarget);
+  const goals = useTimelineStore(s => s.goals);
+  const settings = useTimelineStore(s => s.settings);
   const targets = useMemo(() => Object.values(dailyGoalTargets).filter(t => t.date === date), [dailyGoalTargets, date]);
+
+  const [adjustmentLoading, setAdjustmentLoading] = useState<Record<string, boolean>>({});
+  const [adjustmentResults, setAdjustmentResults] = useState<Record<string, { nextAdjustment: string; suggestedTomorrowTask?: string }>>({});
+
+  const handleSuggestAdjustment = async (targetId: string) => {
+    const t = dailyGoalTargets[targetId];
+    if (!t) return;
+    const goal = goals[t.goalId];
+    if (!goal) return;
+
+    setAdjustmentLoading(prev => ({ ...prev, [targetId]: true }));
+    const result = await suggestDailyAdjustment(
+      goal, t, t.actualProgress ?? '', settings.llm, undefined, t.gap, t.gapReasons,
+    );
+    setAdjustmentLoading(prev => ({ ...prev, [targetId]: false }));
+    if (result.success) {
+      setAdjustmentResults(prev => ({ ...prev, [targetId]: result.data }));
+    }
+  };
 
   if (targets.length === 0) {
     return <div className="text-sm text-gray-500">今日无目标牵引</div>;
@@ -93,6 +116,30 @@ export function DailyGoalReviewPanel({ date }: Props) {
             defaultValue={t.nextAdjustment ?? ''}
             onBlur={(e) => updateDailyGoalTarget(t.id, { nextAdjustment: e.target.value })}
           />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={adjustmentLoading[t.id]}
+              onClick={() => handleSuggestAdjustment(t.id)}
+            >
+              AI 调整建议
+            </Button>
+          </div>
+          {adjustmentResults[t.id] && (() => {
+            const adj = adjustmentResults[t.id]!;
+            return (
+            <div style={{ background: '#eff6ff', padding: '8px', borderRadius: '6px', fontSize: '14px' }}>
+              <strong>AI 调整建议：</strong>
+              <p style={{ margin: '4px 0' }}>{adj.nextAdjustment}</p>
+              {adj.suggestedTomorrowTask && (
+                <p style={{ margin: '4px 0' }}>
+                  <strong>明日建议：</strong>{adj.suggestedTomorrowTask}
+                </p>
+              )}
+            </div>
+            );
+          })()}
         </div>
       ))}
     </div>

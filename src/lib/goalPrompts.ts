@@ -1,4 +1,4 @@
-import type { Goal, GapReason } from './schema';
+import type { Goal, DailyGoalTarget, GapReason } from './schema';
 
 /**
  * AI 补全目标定义
@@ -255,6 +255,39 @@ ${goalInfo}
  * 目标冲突检测
  * 分析所有活跃目标，检测时间、精力、优先级、资源、方向、身份和长短目标之间的冲突。
  */
+/**
+ * 周复盘目标校准
+ * 根据本周的目标执行情况，生成周复盘校准建议。
+ */
+export function buildWeeklyGoalReviewPrompt(
+  weekStart: string,
+  weekEnd: string,
+  goals: Goal[],
+  dailyTargets: DailyGoalTarget[],
+): string {
+  return `你是 ReflectFlow 的周复盘目标校准教练。
+请根据本周的目标执行情况，生成周复盘校准建议。
+
+本周时间：${weekStart} 至 ${weekEnd}
+目标列表：${JSON.stringify(goals, null, 2)}
+本周每日目标：${JSON.stringify(dailyTargets, null, 2)}
+
+请输出以下 JSON：
+{
+  "completionSummary": "...",
+  "completedTargets": 0,
+  "missedTargets": 0,
+  "adjustedTargets": 0,
+  "mainDeviations": ["..."],
+  "recurringBlockers": ["..."],
+  "effectiveActions": ["..."],
+  "ineffectiveActions": ["..."],
+  "nextWeekSuggestions": ["..."],
+  "goalsToPrioritize": ["..."],
+  "goalsToPause": ["..."]
+}`;
+}
+
 export function buildConflictDetectionPrompt(goals: Goal[]): string {
   const goalsInfo = JSON.stringify(goals, null, 2);
 
