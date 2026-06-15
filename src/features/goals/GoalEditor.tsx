@@ -5,6 +5,8 @@ import { Input } from '../../components/primitives/Input';
 import { Select } from '../../components/primitives/Select';
 import { MarkdownEditor } from '../../components/primitives/MarkdownEditor';
 import { createEmptyGoal } from './goalUtils';
+import { GoalDefinitionPanel } from './GoalDefinitionPanel';
+import { GoalPlanPanel } from './GoalPlanPanel';
 import type { Goal, GoalPeriod, GoalStatus } from '../../lib/schema';
 
 interface GoalEditorProps {
@@ -113,6 +115,12 @@ export function GoalEditor({ goal, onClose }: GoalEditorProps) {
             />
           </div>
         </div>
+        {goal && (
+          <div className="goal-ai-panels">
+            <GoalDefinitionPanel goal={goal} />
+            <GoalPlanPanel goal={goal} />
+          </div>
+        )}
         <div className="dialog-actions">
           {goal && (
             <Button variant="ghost" onClick={handleDelete}>Delete</Button>
