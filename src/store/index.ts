@@ -1,445 +1,110 @@
 import { create } from 'zustand';
-import { createId } from '../lib/ids';
-import { parseBulletText } from '../lib/text';
+import { devtools } from 'zustand/middleware';
 import { getWeekRange } from '../lib/date';
 import type {
-  Entry, Settings, Category, ViewMode, AppMode,
-  DailyReview, WeeklyReview, Goal, GeneratedReport, Insight,
+  Entry, Category, ViewMode, AppMode,
+  WeeklyReview, Goal, GeneratedReport, Insight,
   ReviewCase, PreviewPlan, Principle,
 } from '../lib/schema';
 import {
-  saveEntry, loadEntries, deleteEntry as deleteEntryFromDB, loadSettings, saveSettings,
-  saveWeeklyReview, loadWeeklyReviews,
-  saveGoal, loadGoals, deleteGoal as deleteGoalFromDB,
-  saveReport, loadReports, deleteReport as deleteReportFromDB,
-  saveInsight, loadInsights, clearInsights as clearInsightsFromDB,
-  saveReviewCase, loadReviewCases, deleteReviewCase as deleteReviewCaseFromDB,
-  savePreviewPlan, loadPreviewPlans, deletePreviewPlan as deletePreviewPlanFromDB,
-  savePrinciple, loadPrinciples, deletePrinciple as deletePrincipleFromDB,
+  loadEntries, loadSettings, loadWeeklyReviews,
+  loadGoals, loadReports, loadInsights,
+  loadReviewCases, loadPreviewPlans, loadPrinciples,
+  loadGoalFinalReports, loadGoalPrincipleExtractions,
+  loadGoalPlans, loadDailyGoalTargets,
 } from './persistence';
 
-interface AppState {
-  entries: Record<string, Entry>;
-  weeklyReviews: Record<string, WeeklyReview>;
-  goals: Record<string, Goal>;
-  reports: Record<string, GeneratedReport>;
-  insights: Record<string, Insight>;
-  reviewCases: Record<string, ReviewCase>;
-  previewPlans: Record<string, PreviewPlan>;
-  principles: Record<string, Principle>;
-  settings: Settings;
+import { createEntrySlice, type EntrySlice } from './slices/entrySlice';
+import { createGoalSlice, type GoalSlice } from './slices/goalSlice';
+import { createReviewSlice, type ReviewSlice } from './slices/reviewSlice';
+import { createSettingsSlice, type SettingsSlice } from './slices/settingsSlice';
+import { createAISlice, type AISlice } from './slices/aiSlice';
+import { createInsightSlice, type InsightSlice } from './slices/insightSlice';
+import { createReportSlice, type ReportSlice } from './slices/reportSlice';
+import { createPrincipleSlice, type PrincipleSlice } from './slices/principleSlice';
+import { createPreviewSlice, type PreviewSlice } from './slices/previewSlice';
+
+type StoreState = EntrySlice & GoalSlice & ReviewSlice & SettingsSlice & AISlice & InsightSlice & ReportSlice & PrincipleSlice & PreviewSlice & {
+  // UI state not yet in a slice
   selectedMonth: string;
   view: ViewMode;
   appMode: AppMode;
-  aiInFlight: Record<string, boolean>;
-
-  // Actions
-  initialize: () => Promise<void>;
-  upsertEntryText: (date: string, category: Category, text: string) => void;
-  deleteEntry: (date: string) => Promise<void>;
   setView: (view: ViewMode) => void;
   setAppMode: (mode: AppMode) => void;
   setSelectedMonth: (month: string) => void;
-  saveSettings: (settings: Settings) => Promise<void>;
-  setAIInFlight: (key: string, inFlight: boolean) => void;
-  setReflection: (date: string, content: string) => void;
-  setAIQuestions: (date: string, questions: string[]) => void;
-  setQuestionAnswers: (date: string, answers: string[]) => void;
-  setWeekSummary: (weekStart: string, content: string) => void;
-  setProjects: (projects: Array<{ name: string; bulletRefs: Array<{ entryId: string; bulletId: string }> }>) => void;
-  updateDailyReview: (date: string, review: Partial<DailyReview>) => void;
-  updateWeeklyReview: (weekStart: string, review: Partial<WeeklyReview>) => void;
+  initialize: () => Promise<void>;
+};
 
-  // Pro actions
-  upsertGoal: (goal: Goal) => Promise<void>;
-  deleteGoal: (goalId: string) => Promise<void>;
-  linkBulletToGoal: (goalId: string, ref: { entryId: string; bulletId: string }) => Promise<void>;
-  unlinkBulletFromGoal: (goalId: string, bulletId: string) => Promise<void>;
-  saveGeneratedReport: (report: GeneratedReport) => Promise<void>;
-  deleteGeneratedReport: (reportId: string) => Promise<void>;
-  saveInsights: (insights: Insight[]) => Promise<void>;
-  clearInsights: () => Promise<void>;
+export const useTimelineStore = create<StoreState>()(
+  devtools(
+    (...args) => ({
+      ...createEntrySlice(...args),
+      ...createGoalSlice(...args),
+      ...createReviewSlice(...args),
+      ...createSettingsSlice(...args),
+      ...createAISlice(...args),
+      ...createInsightSlice(...args),
+      ...createReportSlice(...args),
+      ...createPrincipleSlice(...args),
+      ...createPreviewSlice(...args),
 
-  // Plus Review Method actions
-  upsertReviewCase: (reviewCase: ReviewCase) => Promise<void>;
-  deleteReviewCase: (reviewCaseId: string) => Promise<void>;
-  upsertPreviewPlan: (previewPlan: PreviewPlan) => Promise<void>;
-  deletePreviewPlan: (previewPlanId: string) => Promise<void>;
-  upsertPrinciple: (principle: Principle) => Promise<void>;
-  deletePrinciple: (principleId: string) => Promise<void>;
-  promoteConclusionToPrinciple: (reviewCaseId: string, conclusionId: string) => Promise<void>;
-}
+      // UI state
+      selectedMonth: new Date().toISOString().slice(0, 7),
+      view: 'cards',
+      appMode: 'checkin',
 
-export const useTimelineStore = create<AppState>((set, get) => ({
-  entries: {},
-  weeklyReviews: {},
-  goals: {},
-  reports: {},
-  insights: {},
-  reviewCases: {},
-  previewPlans: {},
-  principles: {},
-  settings: {
-    llm: { provider: 'openai-compatible', apiKey: '', model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
-    export: { folderStructure: 'year-month', includeAI: true },
-  },
-  selectedMonth: new Date().toISOString().slice(0, 7),
-  view: 'cards',
-  appMode: 'checkin',
-  aiInFlight: {},
+      setView: (view) => args[0]({ view }),
+      setAppMode: (mode) => args[0]({ appMode: mode }),
+      setSelectedMonth: (month) => args[0]({ selectedMonth: month }),
 
-  initialize: async () => {
-    const [entries, settings, weeklyReviews, goals, reports, insights, reviewCases, previewPlans, principles] = await Promise.all([
-      loadEntries(), loadSettings(), loadWeeklyReviews(),
-      loadGoals(), loadReports(), loadInsights(),
-      loadReviewCases(), loadPreviewPlans(), loadPrinciples(),
-    ]);
-    const entriesMap: Record<string, Entry> = {};
-    for (const e of entries) {
-      entriesMap[e.date] = e;
-    }
-    set({
-      entries: entriesMap, settings, weeklyReviews,
-      goals, reports, insights, reviewCases, previewPlans, principles,
-    });
-  },
+      // initialize — loads all data from IndexedDB on app start
+      // Registry pattern: each entry maps a store key to its load function + optional transform.
+      // To add a new entity: add one line here and ensure the slice has the matching state key.
+      initialize: async () => {
+        // Loaders that return the value directly (single object or already a map)
+        const directLoaders: Array<[keyof StoreState, () => Promise<unknown>]> = [
+          ['settings', loadSettings],
+          ['weeklyReviews', loadWeeklyReviews],
+          ['goals', loadGoals],
+          ['reports', loadReports],
+          ['insights', loadInsights],
+          ['reviewCases', loadReviewCases],
+          ['previewPlans', loadPreviewPlans],
+          ['principles', loadPrinciples],
+        ];
 
-  upsertEntryText: (date, category, text) => {
-    const { entries } = get();
-    const bullets = parseBulletText(text);
-    const existing = entries[date];
-    const now = new Date().toISOString();
+        // Loaders that return arrays and need id-keyed map conversion
+        type ArrayLoader = [string, () => Promise<Array<Record<string, unknown>>>, (item: Record<string, unknown>) => string];
+        const arrayLoaders: ArrayLoader[] = [
+          ['entries', loadEntries, (e) => (e as Entry).date],
+          ['goalFinalReports', loadGoalFinalReports, (r) => (r as import('../lib/schema').GoalFinalReport).id],
+          ['goalPrincipleExtractions', loadGoalPrincipleExtractions, (p) => (p as import('../lib/schema').GoalPrincipleExtraction).id],
+          ['goalPlans', loadGoalPlans, (p) => (p as import('../lib/schema').GoalPlan).id],
+          ['dailyGoalTargets', loadDailyGoalTargets, (t) => (t as import('../lib/schema').DailyGoalTarget).id],
+        ];
 
-    const entry: Entry = existing
-      ? {
-          ...existing,
-          bullets: { ...existing.bullets, [category]: bullets },
-          rawText: { ...existing.rawText, [category]: text },
-          updatedAt: now,
-        }
-      : {
-          id: createId(),
-          date,
-          bullets: { work: [], study: [], side: [], [category]: bullets },
-          rawText: { [category]: text },
-          createdAt: now,
-          updatedAt: now,
-        };
+        // Run all loaders in parallel
+        const directResults = await Promise.all(directLoaders.map(([, fn]) => fn()));
+        const arrayResults = await Promise.all(arrayLoaders.map(([, fn]) => fn()));
 
-    set({ entries: { ...entries, [date]: entry } });
-    saveEntry(entry);
-  },
+        // Build the partial state
+        const partial: Record<string, unknown> = {};
+        directLoaders.forEach(([key], i) => { partial[key as string] = directResults[i]; });
+        arrayLoaders.forEach(([key, , keyFn], i) => {
+          const map: Record<string, unknown> = {};
+          const items = arrayResults[i] ?? [];
+          for (const item of items) {
+            map[keyFn(item)] = item;
+          }
+          partial[key] = map;
+        });
 
-  deleteEntry: async (date) => {
-    const { entries } = get();
-    const { [date]: _, ...rest } = entries;
-    set({ entries: rest });
-    await deleteEntryFromDB(date);
-  },
-
-  setView: (view) => set({ view }),
-  setAppMode: (mode) => set({ appMode: mode }),
-  setSelectedMonth: (month) => set({ selectedMonth: month }),
-
-  saveSettings: async (settings) => {
-    await saveSettings(settings);
-    set({ settings });
-  },
-
-  setAIInFlight: (key, inFlight) => {
-    set((state) => ({
-      aiInFlight: inFlight
-        ? { ...state.aiInFlight, [key]: true }
-        : Object.fromEntries(Object.entries(state.aiInFlight).filter(([k]) => k !== key)),
-    }));
-  },
-
-  setReflection: (date, content) => {
-    const { entries } = get();
-    const entry = entries[date];
-    if (!entry) return;
-    const updated = {
-      ...entry,
-      ai: { ...entry.ai, reflection: content },
-      updatedAt: new Date().toISOString(),
-    };
-    set({ entries: { ...entries, [date]: updated } });
-    saveEntry(updated);
-  },
-
-  setAIQuestions: (date, questions) => {
-    const { entries } = get();
-    const entry = entries[date];
-    if (!entry) return;
-    const updated = {
-      ...entry,
-      ai: { ...entry.ai, questions },
-      updatedAt: new Date().toISOString(),
-    };
-    set({ entries: { ...entries, [date]: updated } });
-    saveEntry(updated);
-  },
-
-  setQuestionAnswers: (date, answers) => {
-    const { entries } = get();
-    const entry = entries[date];
-    if (!entry) return;
-    const updated = {
-      ...entry,
-      ai: { ...entry.ai, questionAnswers: answers },
-      updatedAt: new Date().toISOString(),
-    };
-    set({ entries: { ...entries, [date]: updated } });
-    saveEntry(updated);
-  },
-
-  updateDailyReview: (date, review) => {
-    const { entries } = get();
-    const existing = entries[date];
-    const now = new Date().toISOString();
-
-    const entry: Entry = existing
-      ? {
-          ...existing,
-          review: { ...existing.review, ...review },
-          updatedAt: now,
-        }
-      : {
-          id: createId(),
-          date,
-          bullets: { work: [], study: [], side: [] },
-          ai: {},
-          review,
-          createdAt: now,
-          updatedAt: now,
-        };
-
-    set({ entries: { ...entries, [date]: entry } });
-    saveEntry(entry);
-  },
-
-  updateWeeklyReview: (weekStart, review) => {
-    const { weeklyReviews } = get();
-    const existing = weeklyReviews[weekStart];
-
-    const updated: WeeklyReview = existing
-      ? { ...existing, ...review, weekStart }
-      : { weekStart, ...review };
-
-    const newWeeklyReviews = { ...weeklyReviews, [weekStart]: updated };
-    set({ weeklyReviews: newWeeklyReviews });
-    saveWeeklyReview(updated);
-  },
-
-  setWeekSummary: (weekStart, content) => {
-    const { entries } = get();
-    const range = getWeekRange(weekStart);
-    const updated = { ...entries };
-
-    for (const [date, entry] of Object.entries(updated)) {
-      if (date >= range.start && date <= range.end) {
-        const newEntry = {
-          ...entry,
-          ai: { ...entry.ai, weekSummary: { weekStart, content } },
-          updatedAt: new Date().toISOString(),
-        };
-        updated[date] = newEntry;
-        saveEntry(newEntry);
-      }
-    }
-
-    set({ entries: updated });
-  },
-
-  setProjects: (projects) => {
-    const { entries } = get();
-    const updated = { ...entries };
-
-    const bulletToEntry = new Map<string, string>();
-    for (const entry of Object.values(entries)) {
-      for (const bullets of Object.values(entry.bullets)) {
-        for (const bullet of bullets) {
-          bulletToEntry.set(bullet.id, entry.id);
-        }
-      }
-    }
-
-    const entryProjects = new Map<string, typeof projects>();
-    for (const project of projects) {
-      for (const ref of project.bulletRefs) {
-        const entryId = ref.entryId;
-        if (!entryProjects.has(entryId)) entryProjects.set(entryId, []);
-        const existing = entryProjects.get(entryId)!.find((p) => p.name === project.name);
-        if (existing) {
-          existing.bulletRefs.push(ref);
-        } else {
-          entryProjects.get(entryId)!.push({ name: project.name, bulletRefs: [ref] });
-        }
-      }
-    }
-
-    for (const [entryId, entryProjectList] of entryProjects) {
-      const entry = Object.values(updated).find((e) => e.id === entryId) as Entry | undefined;
-      if (entry) {
-        const newEntry = {
-          ...entry,
-          ai: { ...entry.ai, projects: entryProjectList },
-          updatedAt: new Date().toISOString(),
-        };
-        updated[entry.date] = newEntry;
-        saveEntry(newEntry);
-      }
-    }
-
-    set({ entries: updated });
-  },
-
-  // Pro actions
-  upsertGoal: async (goal) => {
-    const { goals } = get();
-    set({ goals: { ...goals, [goal.id]: goal } });
-    await saveGoal(goal);
-  },
-
-  deleteGoal: async (goalId) => {
-    const { goals } = get();
-    const { [goalId]: _, ...rest } = goals;
-    set({ goals: rest });
-    await deleteGoalFromDB(goalId);
-  },
-
-  linkBulletToGoal: async (goalId, ref) => {
-    const { goals } = get();
-    const goal = goals[goalId];
-    if (!goal) return;
-
-    // Deduplicate
-    const exists = goal.linkedBullets.some(
-      (b) => b.entryId === ref.entryId && b.bulletId === ref.bulletId
-    );
-    if (exists) return;
-
-    const updated = {
-      ...goal,
-      linkedBullets: [...goal.linkedBullets, ref],
-      updatedAt: new Date().toISOString(),
-    };
-    set({ goals: { ...goals, [goalId]: updated } });
-    await saveGoal(updated);
-  },
-
-  unlinkBulletFromGoal: async (goalId, bulletId) => {
-    const { goals } = get();
-    const goal = goals[goalId];
-    if (!goal) return;
-
-    const updated = {
-      ...goal,
-      linkedBullets: goal.linkedBullets.filter((b) => b.bulletId !== bulletId),
-      updatedAt: new Date().toISOString(),
-    };
-    set({ goals: { ...goals, [goalId]: updated } });
-    await saveGoal(updated);
-  },
-
-  saveGeneratedReport: async (report) => {
-    const { reports } = get();
-    set({ reports: { ...reports, [report.id]: report } });
-    await saveReport(report);
-  },
-
-  deleteGeneratedReport: async (reportId) => {
-    const { reports } = get();
-    const { [reportId]: _, ...rest } = reports;
-    set({ reports: rest });
-    await deleteReportFromDB(reportId);
-  },
-
-  saveInsights: async (newInsights) => {
-    const { insights } = get();
-    const updated = { ...insights };
-    for (const insight of newInsights) {
-      updated[insight.id] = insight;
-    }
-    set({ insights: updated });
-    // Save each insight
-    for (const insight of newInsights) {
-      await saveInsight(insight);
-    }
-  },
-
-  clearInsights: async () => {
-    set({ insights: {} });
-    await clearInsightsFromDB();
-  },
-
-  // Plus Review Method actions
-  upsertReviewCase: async (reviewCase) => {
-    const { reviewCases } = get();
-    set({ reviewCases: { ...reviewCases, [reviewCase.id]: reviewCase } });
-    await saveReviewCase(reviewCase);
-  },
-
-  deleteReviewCase: async (reviewCaseId) => {
-    const { reviewCases } = get();
-    const { [reviewCaseId]: _, ...rest } = reviewCases;
-    set({ reviewCases: rest });
-    await deleteReviewCaseFromDB(reviewCaseId);
-  },
-
-  upsertPreviewPlan: async (previewPlan) => {
-    const { previewPlans } = get();
-    set({ previewPlans: { ...previewPlans, [previewPlan.id]: previewPlan } });
-    await savePreviewPlan(previewPlan);
-  },
-
-  deletePreviewPlan: async (previewPlanId) => {
-    const { previewPlans } = get();
-    const { [previewPlanId]: _, ...rest } = previewPlans;
-    set({ previewPlans: rest });
-    await deletePreviewPlanFromDB(previewPlanId);
-  },
-
-  upsertPrinciple: async (principle) => {
-    const { principles } = get();
-    set({ principles: { ...principles, [principle.id]: principle } });
-    await savePrinciple(principle);
-  },
-
-  deletePrinciple: async (principleId) => {
-    const { principles } = get();
-    const { [principleId]: _, ...rest } = principles;
-    set({ principles: rest });
-    await deletePrincipleFromDB(principleId);
-  },
-
-  promoteConclusionToPrinciple: async (reviewCaseId, conclusionId) => {
-    const { reviewCases, principles } = get();
-    const reviewCase = reviewCases[reviewCaseId];
-    if (!reviewCase) return;
-
-    const conclusion = reviewCase.conclusions.find((c) => c.id === conclusionId);
-    if (!conclusion) return;
-
-    const now = new Date().toISOString();
-    const principle: Principle = {
-      id: createId(),
-      title: conclusion.title,
-      content: conclusion.content,
-      sourceConclusionId: conclusionId,
-      sourceReviewCaseId: reviewCaseId,
-      evidenceRefs: conclusion.evidenceRefs,
-      applicableContexts: [],
-      boundaries: conclusion.boundary ? [conclusion.boundary] : [],
-      verificationStatus: 'unverified',
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    set({ principles: { ...principles, [principle.id]: principle } });
-    await savePrinciple(principle);
-  },
-}));
+        args[0](partial as Partial<StoreState>);
+      },
+    }),
+    { name: 'TimelineStore' },
+  ),
+);
 
 /** Get entry by date key */
 export function getEntryByDate(date: string): Entry | undefined {

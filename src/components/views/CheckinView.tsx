@@ -5,6 +5,7 @@ import { ReviewEditor } from '../cards/ReviewEditor';
 import { Button } from '../primitives/Button';
 import { createOpenAICompatibleProvider } from '../../services/llm/openaiCompatible';
 import { toDateKey, calculateStreak } from '../../lib/date';
+import { DailyGoalReviewPanel } from '../../features/review/DailyGoalReviewPanel';
 
 export function CheckinView() {
   const today = toDateKey(new Date());
@@ -106,6 +107,7 @@ export function CheckinView() {
       </div>
 
       <div className="checkin-review-section">
+        <DailyGoalReviewPanel date={today} />
         <ReviewEditor date={today} />
       </div>
 

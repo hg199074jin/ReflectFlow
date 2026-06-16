@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTimelineStore } from '../../store';
 import { Button } from '../primitives/Button';
 import { MarkdownEditor } from '../primitives/MarkdownEditor';
 import { createOpenAICompatibleProvider } from '../../services/llm/openaiCompatible';
+import { generateWeeklyGoalReview } from '../../services/goalAI';
 import type { WeeklyReview, ReviewTag } from '../../lib/schema';
 import { REVIEW_TAG_LABELS } from '../../lib/schema';
 import { getWeekRange } from '../../lib/date';
+import type { WeeklyGoalReviewResult } from '../../services/goalAI';
 
 interface WeeklyReviewViewProps {
   weekStart: string;
@@ -26,11 +28,22 @@ export function WeeklyReviewView({ weekStart }: WeeklyReviewViewProps) {
   const settings = useTimelineStore((s) => s.settings);
   const weeklyReviews = useTimelineStore((s) => s.weeklyReviews);
   const updateWeeklyReview = useTimelineStore((s) => s.updateWeeklyReview);
+  const goals = useTimelineStore((s) => s.goals);
+  const dailyGoalTargets = useTimelineStore((s) => s.dailyGoalTargets);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [goalReviewLoading, setGoalReviewLoading] = useState(false);
+  const [goalReviewResult, setGoalReviewResult] = useState<WeeklyGoalReviewResult | null>(null);
+  const [goalReviewError, setGoalReviewError] = useState<string | null>(null);
 
   const range = getWeekRange(weekStart);
   const review = weeklyReviews[weekStart] || { weekStart };
+
+  const weekTargets = useMemo(() => {
+    return Object.values(dailyGoalTargets).filter(
+      (t) => t.date >= range.start && t.date <= range.end,
+    );
+  }, [dailyGoalTargets, range.start, range.end]);
 
   const handleUpdate = (key: keyof WeeklyReview, value: string) => {
     updateWeeklyReview(weekStart, { [key]: value });
@@ -59,6 +72,35 @@ export function WeeklyReviewView({ weekStart }: WeeklyReviewViewProps) {
       setError(err instanceof Error ? err.message : 'Failed to generate');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateGoalReview = async () => {
+    const activeGoals = Object.values(goals).filter((g) => g.status === 'active');
+    if (activeGoals.length === 0) {
+      setGoalReviewError('没有活跃目标，无法生成目标校准建议');
+      return;
+    }
+    if (weekTargets.length === 0) {
+      setGoalReviewError('本周没有每日目标数据，无法生成目标校准建议');
+      return;
+    }
+
+    setGoalReviewLoading(true);
+    setGoalReviewError(null);
+    try {
+      const result = await generateWeeklyGoalReview(
+        range.start, range.end, activeGoals, weekTargets, settings.llm,
+      );
+      if (result.success) {
+        setGoalReviewResult(result.data);
+      } else {
+        setGoalReviewError('解析失败：' + result.error);
+      }
+    } catch (err) {
+      setGoalReviewError(err instanceof Error ? err.message : '生成失败');
+    } finally {
+      setGoalReviewLoading(false);
     }
   };
 
@@ -120,6 +162,94 @@ export function WeeklyReviewView({ weekStart }: WeeklyReviewViewProps) {
           </div>
         </div>
       )}
+
+      <div className="weekly-review-section" style={{ marginTop: '24px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+        <label className="weekly-review-label">目标校准</label>
+        <div className="weekly-review-actions">
+          <Button
+            variant="secondary"
+            onClick={handleGenerateGoalReview}
+            loading={goalReviewLoading}
+          >
+            {goalReviewResult ? '重新生成目标校准建议' : 'AI 生成目标校准建议'}
+          </Button>
+        </div>
+
+        {goalReviewError && <p className="weekly-review-error">{goalReviewError}</p>}
+
+        {goalReviewResult && (
+          <div style={{ marginTop: '12px', fontSize: '14px' }}>
+            <div style={{ background: '#f9fafb', padding: '12px', borderRadius: '6px', marginBottom: '12px' }}>
+              <strong>完成情况总结：</strong>
+              <p>{goalReviewResult.completionSummary}</p>
+              <div style={{ display: 'flex', gap: '16px', marginTop: '8px', fontSize: '13px', color: '#6b7280' }}>
+                <span>已完成：{goalReviewResult.completedTargets} 项</span>
+                <span>未完成：{goalReviewResult.missedTargets} 项</span>
+                <span>已调整：{goalReviewResult.adjustedTargets} 项</span>
+              </div>
+            </div>
+
+            {goalReviewResult.mainDeviations.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <strong>主要偏差：</strong>
+                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                  {goalReviewResult.mainDeviations.map((d, i) => <li key={i}>{d}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {goalReviewResult.recurringBlockers.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <strong>反复出现的障碍：</strong>
+                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                  {goalReviewResult.recurringBlockers.map((b, i) => <li key={i}>{b}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {goalReviewResult.effectiveActions.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <strong>有效行动：</strong>
+                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                  {goalReviewResult.effectiveActions.map((a, i) => <li key={i}>{a}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {goalReviewResult.ineffectiveActions.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <strong>无效行动：</strong>
+                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                  {goalReviewResult.ineffectiveActions.map((a, i) => <li key={i}>{a}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {goalReviewResult.nextWeekSuggestions.length > 0 && (
+              <div style={{ marginBottom: '8px' }}>
+                <strong>下周建议：</strong>
+                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                  {goalReviewResult.nextWeekSuggestions.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {goalReviewResult.goalsToPrioritize.length > 0 && (
+              <div style={{ marginBottom: '8px', color: '#16a34a' }}>
+                <strong>建议优先推进：</strong>
+                <span style={{ marginLeft: '4px' }}>{goalReviewResult.goalsToPrioritize.join('、')}</span>
+              </div>
+            )}
+
+            {goalReviewResult.goalsToPause.length > 0 && (
+              <div style={{ marginBottom: '8px', color: '#dc2626' }}>
+                <strong>建议暂停/缩减：</strong>
+                <span style={{ marginLeft: '4px' }}>{goalReviewResult.goalsToPause.join('、')}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Goal, GoalPeriod, GoalStatus, Entry } from '../../lib/schema';
+import type { Goal, GoalPeriod, GoalStatus, Entry, DailyGoalTarget } from '../../lib/schema';
 import { createId } from '../../lib/ids';
 import { toDateKey } from '../../lib/date';
 
@@ -57,6 +57,7 @@ export function isGoalStale(goal: Goal, entries: Record<string, Entry>): boolean
 
 export function getGoalStatusColor(status: GoalStatus): string {
   switch (status) {
+    case 'draft': return '#9ca3af';
     case 'active': return '#10b981';
     case 'done': return '#6b7280';
     case 'paused': return '#f59e0b';
@@ -67,6 +68,7 @@ export function getGoalStatusColor(status: GoalStatus): string {
 
 export function getGoalStatusLabel(status: GoalStatus): string {
   switch (status) {
+    case 'draft': return '草稿';
     case 'active': return '进行中';
     case 'done': return '已完成';
     case 'paused': return '已暂停';
@@ -81,4 +83,64 @@ export function getGoalPeriodLabel(period: GoalPeriod): string {
     case 'month': return '月目标';
     default: return period;
   }
+}
+
+export interface GoalRisk {
+  level: 'warning' | 'danger';
+  reasons: string[];
+}
+
+/**
+ * Detect goal risk based on consecutive missed days and deadline proximity.
+ * - 2+ consecutive days missed → warning (yellow)
+ * - 3+ consecutive days missed → danger (red)
+ * - Deadline < 7 days and completed targets < 50% → danger (red)
+ */
+export function detectGoalRisk(goal: Goal, targets: DailyGoalTarget[]): GoalRisk | null {
+  if (goal.status !== 'active') return null;
+
+  // Sort targets by date descending to find consecutive misses from most recent
+  const sorted = [...targets]
+    .filter(t => t.goalId === goal.id)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const reasons: string[] = [];
+  let level: 'warning' | 'danger' = 'warning';
+
+  // Count consecutive missed days from the most recent target
+  let consecutiveMissed = 0;
+  for (const t of sorted) {
+    if (t.status === 'missed') {
+      consecutiveMissed++;
+    } else {
+      break;
+    }
+  }
+
+  if (consecutiveMissed >= 3) {
+    level = 'danger';
+    reasons.push(`连续 ${consecutiveMissed} 天未完成目标`);
+  } else if (consecutiveMissed >= 2) {
+    reasons.push(`连续 ${consecutiveMissed} 天未完成目标`);
+  }
+
+  // Check deadline proximity
+  const today = new Date();
+  const endDate = new Date(goal.endDate);
+  const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysRemaining > 0 && daysRemaining < 7) {
+    const goalTargets = targets.filter(t => t.goalId === goal.id);
+    const completed = goalTargets.filter(t => t.status === 'completed').length;
+    const total = goalTargets.length;
+    const completionRate = total > 0 ? completed / total : 0;
+
+    if (completionRate < 0.5) {
+      level = 'danger';
+      reasons.push(`距截止日期仅剩 ${daysRemaining} 天，完成率仅 ${Math.round(completionRate * 100)}%`);
+    }
+  }
+
+  if (reasons.length === 0) return null;
+  return { level, reasons };
 }

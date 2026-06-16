@@ -3,6 +3,7 @@ import { useTimelineStore } from '../../store';
 import { Button } from '../../components/primitives/Button';
 import { GoalEditor } from './GoalEditor';
 import { GoalProgressPanel } from './GoalProgressPanel';
+import { GoalConflictPanel } from './GoalConflictPanel';
 import { getGoalStatusLabel, getGoalStatusColor, getGoalPeriodLabel } from './goalUtils';
 import type { Goal, GoalPeriod } from '../../lib/schema';
 
@@ -40,6 +41,8 @@ export function GoalsView() {
         <h2 className="goals-title">Goals</h2>
         <Button onClick={() => setShowEditor(true)}>+ New Goal</Button>
       </div>
+
+      <GoalConflictPanel />
 
       <div className="goals-filters">
         <button

@@ -113,7 +113,7 @@ export const settingsSchema = z.object({
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
-export type ViewMode = 'cards' | 'experience' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights' | 'reviews' | 'preview' | 'principles' | 'search';
+export type ViewMode = 'cards' | 'experience' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights' | 'reviews' | 'preview' | 'principles' | 'search' | 'dashboard' | 'weekly-dashboard' | 'coach';
 export type AppMode = 'checkin' | 'browse';
 
 export interface ClassifiableBullet {
@@ -142,7 +142,7 @@ export type EvidenceRef = z.infer<typeof evidenceRefSchema>;
 export const goalPeriodSchema = z.enum(['week', 'month']);
 export type GoalPeriod = z.infer<typeof goalPeriodSchema>;
 
-export const goalStatusSchema = z.enum(['active', 'done', 'paused', 'dropped']);
+export const goalStatusSchema = z.enum(['draft', 'active', 'done', 'paused', 'dropped']);
 export type GoalStatus = z.infer<typeof goalStatusSchema>;
 
 export const goalSchema = z.object({
@@ -154,10 +154,36 @@ export const goalSchema = z.object({
   status: goalStatusSchema,
   linkedBullets: z.array(projectRefSchema),
   notes: z.string().optional(),
+  currentState: z.string().optional(),
+  desiredOutcome: z.string().optional(),
+  availableTime: z.string().optional(),
+  successCriteria: z.array(z.string()).optional(),
+  constraints: z.array(z.string()).optional(),
+  risks: z.array(z.string()).optional(),
+  acceptanceMethod: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
+  successCriteriaSource: z.enum(['user', 'ai', 'mixed']).optional(),
+  constraintsSource: z.enum(['user', 'ai', 'mixed']).optional(),
   ai: z.object({
     progressSummary: z.string().optional(),
     risk: z.string().optional(),
     nextAction: z.string().optional(),
+    qualityScore: z.number().optional(),
+    qualityDetails: z.object({
+      specificityScore: z.number(),
+      measurabilityScore: z.number(),
+      timeBoundScore: z.number(),
+      currentStateScore: z.number(),
+      successCriteriaScore: z.number(),
+      constraintsScore: z.number(),
+      decomposabilityScore: z.number(),
+      realismScore: z.number(),
+      conflictScore: z.number(),
+      reviewValueScore: z.number(),
+    }).optional(),
+    qualityStrengths: z.array(z.string()).optional(),
+    qualityWeaknesses: z.array(z.string()).optional(),
+    qualitySuggestions: z.array(z.string()).optional(),
   }).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -442,3 +468,216 @@ export const VERIFICATION_STATUS_LABELS: Record<Principle['verificationStatus'],
   validated: '已验证',
   invalidated: '已失效',
 };
+
+// ========================================
+// Goal System Types (Tasks 1.9 + 1.10)
+// ========================================
+
+// 里程碑
+export const milestoneStatusSchema = z.enum(['pending', 'in_progress', 'done', 'blocked']);
+export type MilestoneStatus = z.infer<typeof milestoneStatusSchema>;
+
+export const goalMilestoneSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string(),
+  expectedOutput: z.string(),
+  successCriteria: z.array(z.string()).optional(),
+  status: milestoneStatusSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type GoalMilestone = z.infer<typeof goalMilestoneSchema>;
+
+// 每日目标
+export const dailyGoalStatusSchema = z.enum([
+  'pending', 'in_progress', 'completed',
+  'partially_completed', 'missed', 'adjusted'
+]);
+export type DailyGoalStatus = z.infer<typeof dailyGoalStatusSchema>;
+
+export const DAILY_GOAL_STATUS_LABELS: Record<DailyGoalStatus, string> = {
+  pending: '未开始',
+  in_progress: '进行中',
+  completed: '已完成',
+  partially_completed: '部分完成',
+  missed: '未完成',
+  adjusted: '已调整',
+};
+
+export const gapReasonSchema = z.enum([
+  'not_enough_time', 'task_too_large', 'technical_blocker',
+  'priority_conflict', 'low_energy', 'unclear_goal',
+  'external_interruption', 'other'
+]);
+export type GapReason = z.infer<typeof gapReasonSchema>;
+
+export const GAP_REASON_LABELS: Record<GapReason, string> = {
+  not_enough_time: '时间不足',
+  task_too_large: '任务过大',
+  technical_blocker: '技术阻碍',
+  priority_conflict: '优先级冲突',
+  low_energy: '精力不足',
+  unclear_goal: '目标不清',
+  external_interruption: '外部干扰',
+  other: '其他原因',
+};
+
+export const dailyGoalTargetSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  milestoneId: z.string().optional(),
+  date: z.string(),
+  plannedTask: z.string(),
+  minimumStandard: z.string(),
+  expectedOutput: z.string(),
+  reviewQuestions: z.array(z.string()),
+  deviationCriteria: z.array(z.string()).optional(),
+  status: dailyGoalStatusSchema,
+  actualProgress: z.string().optional(),
+  gap: z.string().optional(),
+  gapReasons: z.array(gapReasonSchema).optional(),
+  nextAdjustment: z.string().optional(),
+  createdBy: z.enum(['ai', 'user']),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type DailyGoalTarget = z.infer<typeof dailyGoalTargetSchema>;
+
+// 目标计划
+export const goalPlanSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  summary: z.string(),
+  milestones: z.array(goalMilestoneSchema),
+  dailyTargets: z.array(dailyGoalTargetSchema),
+  generatedBy: z.enum(['ai', 'user']),
+  generatedAt: z.string(),
+  version: z.number(),
+});
+export type GoalPlan = z.infer<typeof goalPlanSchema>;
+
+// 目标冲突
+export const goalConflictTypeSchema = z.enum([
+  'time_conflict', 'energy_conflict', 'priority_conflict',
+  'resource_conflict', 'direction_conflict', 'identity_conflict',
+  'short_long_term_conflict'
+]);
+export type GoalConflictType = z.infer<typeof goalConflictTypeSchema>;
+
+export const goalConflictSchema = z.object({
+  id: z.string(),
+  goalIds: z.array(z.string()),
+  type: goalConflictTypeSchema,
+  severity: z.enum(['low', 'medium', 'high']),
+  description: z.string(),
+  evidence: z.array(z.string()),
+  suggestion: z.string(),
+  createdAt: z.string(),
+});
+export type GoalConflict = z.infer<typeof goalConflictSchema>;
+
+// 计划调整
+export const planAdjustmentSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  sourceDailyTargetId: z.string().optional(),
+  reason: z.string(),
+  impact: z.string(),
+  adjustedTargets: z.array(dailyGoalTargetSchema),
+  postponedTargets: z.array(dailyGoalTargetSchema),
+  removedTargets: z.array(dailyGoalTargetSchema),
+  shouldChangeDeadline: z.boolean(),
+  suggestedNewDeadline: z.string().optional(),
+  shouldReduceScope: z.boolean(),
+  scopeReductionSuggestion: z.string().optional(),
+  createdAt: z.string(),
+});
+export type PlanAdjustment = z.infer<typeof planAdjustmentSchema>;
+
+// 周复盘目标校准
+export const weeklyGoalReviewSchema = z.object({
+  id: z.string(),
+  weekStart: z.string(),
+  weekEnd: z.string(),
+  goalIds: z.array(z.string()),
+  completionSummary: z.string(),
+  completedTargets: z.number(),
+  missedTargets: z.number(),
+  adjustedTargets: z.number(),
+  mainDeviations: z.array(z.string()),
+  recurringBlockers: z.array(z.string()),
+  effectiveActions: z.array(z.string()),
+  ineffectiveActions: z.array(z.string()),
+  nextWeekSuggestions: z.array(z.string()),
+  goalsToPrioritize: z.array(z.string()),
+  goalsToPause: z.array(z.string()),
+  createdAt: z.string(),
+});
+export type WeeklyGoalReview = z.infer<typeof weeklyGoalReviewSchema>;
+
+// 目标结案报告
+export const goalFinalReportSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  title: z.string(),
+  period: z.object({ startDate: z.string(), endDate: z.string() }),
+  originalGoal: z.string(),
+  successCriteria: z.array(z.string()),
+  finalOutcome: z.string(),
+  completionLevel: z.enum(['completed', 'partially_completed', 'failed', 'abandoned']),
+  keyActions: z.array(z.string()),
+  majorDeviations: z.array(z.string()),
+  rootCauses: z.array(z.string()),
+  adjustments: z.array(z.string()),
+  effectiveActions: z.array(z.string()),
+  ineffectiveActions: z.array(z.string()),
+  principles: z.array(z.string()),
+  nextTimeSuggestions: z.array(z.string()),
+  markdown: z.string(),
+  createdAt: z.string(),
+});
+export type GoalFinalReport = z.infer<typeof goalFinalReportSchema>;
+
+// 目标原则沉淀
+export const goalPrincipleExtractionSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  principleTitle: z.string(),
+  principleContent: z.string(),
+  sourceEvidence: z.array(z.string()),
+  applicableScenarios: z.array(z.string()),
+  boundaryConditions: z.array(z.string()),
+  counterExamples: z.array(z.string()),
+  confidence: z.enum(['low', 'medium', 'high']),
+  createdAt: z.string(),
+});
+export type GoalPrincipleExtraction = z.infer<typeof goalPrincipleExtractionSchema>;
+
+// 事前推演
+export const goalPremortemSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  predictedFailureReasons: z.array(z.string()),
+  underestimatedConstraints: z.array(z.string()),
+  likelyDelays: z.array(z.string()),
+  triggerConditions: z.array(z.string()),
+  minimumViablePath: z.string(),
+  createdAt: z.string(),
+});
+export type GoalPremortem = z.infer<typeof goalPremortemSchema>;
+
+export const goalPremortemReviewSchema = z.object({
+  id: z.string(),
+  goalId: z.string(),
+  premortemId: z.string(),
+  accuratePredictions: z.array(z.string()),
+  inaccuratePredictions: z.array(z.string()),
+  missedRisks: z.array(z.string()),
+  judgmentLessons: z.array(z.string()),
+  createdAt: z.string(),
+});
+export type GoalPremortemReview = z.infer<typeof goalPremortemReviewSchema>;
