@@ -11,6 +11,7 @@ import { GoalQualityScoreCard } from './GoalQualityScoreCard';
 import { GoalFinalReportView } from './GoalFinalReportView';
 import { GoalPremortemPanel } from './GoalPremortemPanel';
 import { RiskWarningBanner } from './RiskWarningBanner';
+import { ProjectArchiveExport } from './ProjectArchiveExport';
 import type { Goal, GoalPeriod, GoalStatus } from '../../lib/schema';
 
 interface GoalEditorProps {
@@ -129,6 +130,11 @@ export function GoalEditor({ goal, onClose }: GoalEditorProps) {
             {(goal.status === 'done' || goal.status === 'dropped' || goal.status === 'paused') && (
               <GoalFinalReportView goal={goal} />
             )}
+          </div>
+        )}
+        {goal && (
+          <div className="dialog-actions" style={{ justifyContent: 'flex-start' }}>
+            <ProjectArchiveExport goal={goal} />
           </div>
         )}
         <div className="dialog-actions">
