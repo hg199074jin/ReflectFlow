@@ -28,9 +28,11 @@ export const createPrincipleSlice: SliceCreator<PrincipleSlice> = (set, get) => 
 
   promoteConclusionToPrinciple: async (reviewCaseId, conclusionId) => {
     const { principles } = get();
-    // Access reviewCases from the full composed store
-    const { reviewCases } = get() as unknown as { reviewCases: Record<string, ReviewCase> };
-    const reviewCase = reviewCases[reviewCaseId];
+    // At runtime get() returns the full composed store state (including reviewCases),
+    // but the SliceCreator type only knows about PrincipleSlice. Use a type assertion
+    // to access cross-slice state — this is the standard Zustand sliced-store pattern.
+    const allState = get() as PrincipleSlice & { reviewCases: Record<string, ReviewCase> };
+    const reviewCase = allState.reviewCases[reviewCaseId];
     if (!reviewCase) return;
 
     const conclusion = reviewCase.conclusions.find((c) => c.id === conclusionId);

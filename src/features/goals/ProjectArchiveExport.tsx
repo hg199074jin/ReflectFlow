@@ -1,5 +1,6 @@
 import { useTimelineStore } from '../../store';
 import { exportGoalAsMarkdown } from '../../services/projectArchive';
+import { downloadBlob } from '../../services/export/download';
 import type { Goal } from '../../lib/schema';
 
 interface Props {
@@ -17,14 +18,7 @@ export function ProjectArchiveExport({ goal }: Props) {
     const targets = Object.values(dailyGoalTargets).filter(t => t.goalId === goal.id);
 
     const markdown = exportGoalAsMarkdown(goal, plan, reports, targets);
-
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reflect-flow-${goal.title}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(`reflect-flow-${goal.title}.md`, markdown, 'text/markdown');
   };
 
   return (

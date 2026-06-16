@@ -3,6 +3,7 @@ import { useTimelineStore } from '../../store';
 import { generateGoalFinalReport, extractGoalPrinciples } from '../../services/goalAI';
 import { createId } from '../../lib/ids';
 import { Button } from '../../components/primitives/Button';
+import { downloadBlob } from '../../services/export/download';
 import type { Goal, GoalFinalReport, GoalPrincipleExtraction } from '../../lib/schema';
 import type { GoalFinalReportResult } from '../../services/goalAI';
 
@@ -33,76 +34,76 @@ const CONFIDENCE_LABELS: Record<string, string> = {
   high: '高',
 };
 
-/** 从报告数据生成 Markdown 文本 */
-function buildReportMarkdown(report: GoalFinalReport): string {
+/** 报告 Markdown 生成的通用数据形状 */
+interface ReportMarkdownData {
+  title: string;
+  completionLevel: string;
+  startDate: string;
+  endDate: string;
+  originalGoal: string;
+  successCriteria: string[];
+  finalOutcome: string;
+  keyActions: string[];
+  majorDeviations: string[];
+  rootCauses: string[];
+  adjustments: string[];
+  effectiveActions: string[];
+  ineffectiveActions: string[];
+  principles: string[];
+  nextTimeSuggestions: string[];
+}
+
+/** 从标准化数据生成 Markdown 文本 */
+function buildReportMarkdownCore(data: ReportMarkdownData): string {
   const lines: string[] = [];
-  lines.push(`# ${report.title}`);
+  lines.push(`# ${data.title}`);
   lines.push('');
-  lines.push(`**完成等级：** ${COMPLETION_LEVEL_LABELS[report.completionLevel] ?? report.completionLevel}`);
-  lines.push(`**时间范围：** ${report.period.startDate} ~ ${report.period.endDate}`);
+  lines.push(`**完成等级：** ${COMPLETION_LEVEL_LABELS[data.completionLevel] ?? data.completionLevel}`);
+  lines.push(`**时间范围：** ${data.startDate} ~ ${data.endDate}`);
   lines.push('');
-  lines.push('## 原始目标');
-  lines.push(report.originalGoal);
-  lines.push('');
-  lines.push('## 成功标准');
-  for (const c of report.successCriteria) {
-    lines.push(`- ${c}`);
-  }
-  lines.push('');
-  lines.push('## 最终结果');
-  lines.push(report.finalOutcome);
-  lines.push('');
-  lines.push('## 关键行动');
-  for (const a of report.keyActions) {
-    lines.push(`- ${a}`);
-  }
-  lines.push('');
-  lines.push('## 主要偏差');
-  for (const d of report.majorDeviations) {
-    lines.push(`- ${d}`);
-  }
-  lines.push('');
-  lines.push('## 根本原因');
-  for (const r of report.rootCauses) {
-    lines.push(`- ${r}`);
-  }
-  lines.push('');
-  lines.push('## 调整措施');
-  for (const a of report.adjustments) {
-    lines.push(`- ${a}`);
-  }
-  lines.push('');
-  lines.push('## 有效行动');
-  for (const a of report.effectiveActions) {
-    lines.push(`- ${a}`);
-  }
-  lines.push('');
-  lines.push('## 无效行动');
-  for (const a of report.ineffectiveActions) {
-    lines.push(`- ${a}`);
-  }
-  lines.push('');
-  lines.push('## 经验原则');
-  for (const p of report.principles) {
-    lines.push(`- ${p}`);
-  }
-  lines.push('');
-  lines.push('## 下次建议');
-  for (const s of report.nextTimeSuggestions) {
-    lines.push(`- ${s}`);
+  for (const [label, items] of [
+    ['原始目标', [data.originalGoal]],
+    ['成功标准', data.successCriteria],
+    ['最终结果', [data.finalOutcome]],
+    ['关键行动', data.keyActions],
+    ['主要偏差', data.majorDeviations],
+    ['根本原因', data.rootCauses],
+    ['调整措施', data.adjustments],
+    ['有效行动', data.effectiveActions],
+    ['无效行动', data.ineffectiveActions],
+    ['经验原则', data.principles],
+    ['下次建议', data.nextTimeSuggestions],
+  ] as const) {
+    lines.push(`## ${label}`);
+    if (items.length === 1) {
+      lines.push(items[0]);
+    } else {
+      for (const item of items) lines.push(`- ${item}`);
+    }
+    lines.push('');
   }
   return lines.join('\n');
 }
 
-/** 触发浏览器下载 */
-function downloadMarkdown(filename: string, content: string) {
-  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+/** 从持久化报告生成 Markdown */
+function buildReportMarkdown(report: GoalFinalReport): string {
+  return buildReportMarkdownCore({
+    title: report.title,
+    completionLevel: report.completionLevel,
+    startDate: report.period.startDate,
+    endDate: report.period.endDate,
+    originalGoal: report.originalGoal,
+    successCriteria: report.successCriteria,
+    finalOutcome: report.finalOutcome,
+    keyActions: report.keyActions,
+    majorDeviations: report.majorDeviations,
+    rootCauses: report.rootCauses,
+    adjustments: report.adjustments,
+    effectiveActions: report.effectiveActions,
+    ineffectiveActions: report.ineffectiveActions,
+    principles: report.principles,
+    nextTimeSuggestions: report.nextTimeSuggestions,
+  });
 }
 
 export function GoalFinalReportView({ goal }: Props) {
@@ -182,7 +183,7 @@ export function GoalFinalReportView({ goal }: Props) {
   const handleExportMarkdown = () => {
     if (!report) return;
     const md = report.markdown || buildReportMarkdown(report);
-    downloadMarkdown(`${goal.title}-结案报告.md`, md);
+    downloadBlob(`${goal.title}-结案报告.md`, md, 'text/markdown;charset=utf-8');
   };
 
   const handleExtractPrinciples = async () => {
@@ -456,43 +457,21 @@ export function GoalFinalReportView({ goal }: Props) {
 
 /** 从 AI 结果生成 Markdown（报告对象尚未持久化时使用） */
 function buildReportMarkdownFromResult(data: GoalFinalReportResult, goal: Goal): string {
-  const lines: string[] = [];
-  lines.push(`# ${data.title}`);
-  lines.push('');
-  lines.push(`**完成等级：** ${COMPLETION_LEVEL_LABELS[data.completionLevel] ?? data.completionLevel}`);
-  lines.push(`**时间范围：** ${goal.startDate} ~ ${goal.endDate}`);
-  lines.push('');
-  lines.push('## 原始目标');
-  lines.push(data.originalGoal);
-  lines.push('');
-  lines.push('## 成功标准');
-  for (const c of data.successCriteria) lines.push(`- ${c}`);
-  lines.push('');
-  lines.push('## 最终结果');
-  lines.push(data.finalOutcome);
-  lines.push('');
-  lines.push('## 关键行动');
-  for (const a of data.keyActions) lines.push(`- ${a}`);
-  lines.push('');
-  lines.push('## 主要偏差');
-  for (const d of data.majorDeviations) lines.push(`- ${d}`);
-  lines.push('');
-  lines.push('## 根本原因');
-  for (const r of data.rootCauses) lines.push(`- ${r}`);
-  lines.push('');
-  lines.push('## 调整措施');
-  for (const a of data.adjustments) lines.push(`- ${a}`);
-  lines.push('');
-  lines.push('## 有效行动');
-  for (const a of data.effectiveActions) lines.push(`- ${a}`);
-  lines.push('');
-  lines.push('## 无效行动');
-  for (const a of data.ineffectiveActions) lines.push(`- ${a}`);
-  lines.push('');
-  lines.push('## 经验原则');
-  for (const p of data.principles) lines.push(`- ${p}`);
-  lines.push('');
-  lines.push('## 下次建议');
-  for (const s of data.nextTimeSuggestions) lines.push(`- ${s}`);
-  return lines.join('\n');
+  return buildReportMarkdownCore({
+    title: data.title,
+    completionLevel: data.completionLevel,
+    startDate: goal.startDate,
+    endDate: goal.endDate,
+    originalGoal: data.originalGoal,
+    successCriteria: data.successCriteria,
+    finalOutcome: data.finalOutcome,
+    keyActions: data.keyActions,
+    majorDeviations: data.majorDeviations,
+    rootCauses: data.rootCauses,
+    adjustments: data.adjustments,
+    effectiveActions: data.effectiveActions,
+    ineffectiveActions: data.ineffectiveActions,
+    principles: data.principles,
+    nextTimeSuggestions: data.nextTimeSuggestions,
+  });
 }

@@ -2,31 +2,12 @@ import { useMemo, useState } from 'react';
 import { useTimelineStore } from '../../store';
 import { suggestDailyAdjustment } from '../../services/goalAI';
 import { Button } from '../../components/primitives/Button';
+import { DAILY_GOAL_STATUS_LABELS, GAP_REASON_LABELS } from '../../lib/schema';
 import type { DailyGoalStatus, GapReason } from '../../lib/schema';
 
 interface Props {
   date: string;
 }
-
-const STATUS_LABELS: Record<DailyGoalStatus, string> = {
-  pending: '未开始',
-  in_progress: '进行中',
-  completed: '已完成',
-  partially_completed: '部分完成',
-  missed: '未完成',
-  adjusted: '已调整',
-};
-
-const GAP_REASON_LABELS: Record<GapReason, string> = {
-  not_enough_time: '时间不足',
-  task_too_large: '任务过大',
-  technical_blocker: '技术卡点',
-  priority_conflict: '优先级冲突',
-  low_energy: '状态不好',
-  unclear_goal: '目标不清',
-  external_interruption: '外部干扰',
-  other: '其他',
-};
 
 export function DailyGoalReviewPanel({ date }: Props) {
   const dailyGoalTargets = useTimelineStore(s => s.dailyGoalTargets);
@@ -45,12 +26,17 @@ export function DailyGoalReviewPanel({ date }: Props) {
     if (!goal) return;
 
     setAdjustmentLoading(prev => ({ ...prev, [targetId]: true }));
-    const result = await suggestDailyAdjustment(
-      goal, t, t.actualProgress ?? '', settings.llm, undefined, t.gap, t.gapReasons,
-    );
-    setAdjustmentLoading(prev => ({ ...prev, [targetId]: false }));
-    if (result.success) {
-      setAdjustmentResults(prev => ({ ...prev, [targetId]: result.data }));
+    try {
+      const result = await suggestDailyAdjustment(
+        goal, t, t.actualProgress ?? '', settings.llm, undefined, t.gap, t.gapReasons,
+      );
+      if (result.success) {
+        setAdjustmentResults(prev => ({ ...prev, [targetId]: result.data }));
+      }
+    } catch {
+      // Network or AI service errors are non-critical; loading state is cleared in finally
+    } finally {
+      setAdjustmentLoading(prev => ({ ...prev, [targetId]: false }));
     }
   };
 
@@ -75,7 +61,7 @@ export function DailyGoalReviewPanel({ date }: Props) {
             value={t.status}
             onChange={(e) => updateDailyGoalTarget(t.id, { status: e.target.value as DailyGoalStatus })}
           >
-            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+            {Object.entries(DAILY_GOAL_STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

@@ -23,6 +23,13 @@ const DIMENSION_LABELS: Record<string, string> = {
   reviewValueScore: '复盘价值',
 };
 
+/** All quality dimension keys — single source of truth */
+const QUALITY_DIMENSIONS = [
+  'specificityScore', 'measurabilityScore', 'timeBoundScore',
+  'currentStateScore', 'successCriteriaScore', 'constraintsScore',
+  'decomposabilityScore', 'realismScore', 'conflictScore', 'reviewValueScore',
+] as const;
+
 /** 获取分数等级颜色 */
 function getScoreColor(score: number, max: number): string {
   const ratio = score / max;
@@ -39,22 +46,14 @@ export function GoalQualityScoreCard({ goal }: Props) {
   const [result, setResult] = useState<GoalQualityResult | null>(() => {
     // 初始化时从 goal.ai 中读取已有的评分结果
     if (goal.ai?.qualityScore != null && goal.ai?.qualityDetails) {
+      const details = goal.ai.qualityDetails;
       return {
         totalScore: goal.ai.qualityScore,
-        specificityScore: goal.ai.qualityDetails.specificityScore,
-        measurabilityScore: goal.ai.qualityDetails.measurabilityScore,
-        timeBoundScore: goal.ai.qualityDetails.timeBoundScore,
-        currentStateScore: goal.ai.qualityDetails.currentStateScore,
-        successCriteriaScore: goal.ai.qualityDetails.successCriteriaScore,
-        constraintsScore: goal.ai.qualityDetails.constraintsScore,
-        decomposabilityScore: goal.ai.qualityDetails.decomposabilityScore,
-        realismScore: goal.ai.qualityDetails.realismScore,
-        conflictScore: goal.ai.qualityDetails.conflictScore,
-        reviewValueScore: goal.ai.qualityDetails.reviewValueScore,
+        ...Object.fromEntries(QUALITY_DIMENSIONS.map(k => [k, (details as Record<string, number>)[k]])),
         strengths: goal.ai.qualityStrengths ?? [],
         weaknesses: goal.ai.qualityWeaknesses ?? [],
         suggestions: goal.ai.qualitySuggestions ?? [],
-      };
+      } as GoalQualityResult;
     }
     return null;
   });
@@ -67,23 +66,16 @@ export function GoalQualityScoreCard({ goal }: Props) {
       if (aiResult.success) {
         setResult(aiResult.data);
         // 保存评分结果到 goal.ai
+        const dataRec = aiResult.data as unknown as Record<string, number>;
+        const qualityDetails = Object.fromEntries(
+          QUALITY_DIMENSIONS.map(k => [k, dataRec[k]]),
+        );
         const updatedGoal: Goal = {
           ...goal,
           ai: {
             ...goal.ai,
             qualityScore: aiResult.data.totalScore,
-            qualityDetails: {
-              specificityScore: aiResult.data.specificityScore,
-              measurabilityScore: aiResult.data.measurabilityScore,
-              timeBoundScore: aiResult.data.timeBoundScore,
-              currentStateScore: aiResult.data.currentStateScore,
-              successCriteriaScore: aiResult.data.successCriteriaScore,
-              constraintsScore: aiResult.data.constraintsScore,
-              decomposabilityScore: aiResult.data.decomposabilityScore,
-              realismScore: aiResult.data.realismScore,
-              conflictScore: aiResult.data.conflictScore,
-              reviewValueScore: aiResult.data.reviewValueScore,
-            },
+            qualityDetails: qualityDetails as NonNullable<Goal['ai']>['qualityDetails'],
             qualityStrengths: aiResult.data.strengths,
             qualityWeaknesses: aiResult.data.weaknesses,
             qualitySuggestions: aiResult.data.suggestions,
@@ -101,11 +93,7 @@ export function GoalQualityScoreCard({ goal }: Props) {
     }
   };
 
-  const dimensionKeys = [
-    'specificityScore', 'measurabilityScore', 'timeBoundScore',
-    'currentStateScore', 'successCriteriaScore', 'constraintsScore',
-    'decomposabilityScore', 'realismScore', 'conflictScore', 'reviewValueScore',
-  ];
+  const dimensionKeys = QUALITY_DIMENSIONS as unknown as string[];
 
   return (
     <div className="goal-quality-score-card">

@@ -499,12 +499,32 @@ export const dailyGoalStatusSchema = z.enum([
 ]);
 export type DailyGoalStatus = z.infer<typeof dailyGoalStatusSchema>;
 
+export const DAILY_GOAL_STATUS_LABELS: Record<DailyGoalStatus, string> = {
+  pending: '未开始',
+  in_progress: '进行中',
+  completed: '已完成',
+  partially_completed: '部分完成',
+  missed: '未完成',
+  adjusted: '已调整',
+};
+
 export const gapReasonSchema = z.enum([
   'not_enough_time', 'task_too_large', 'technical_blocker',
   'priority_conflict', 'low_energy', 'unclear_goal',
   'external_interruption', 'other'
 ]);
 export type GapReason = z.infer<typeof gapReasonSchema>;
+
+export const GAP_REASON_LABELS: Record<GapReason, string> = {
+  not_enough_time: '时间不足',
+  task_too_large: '任务过大',
+  technical_blocker: '技术阻碍',
+  priority_conflict: '优先级冲突',
+  low_energy: '精力不足',
+  unclear_goal: '目标不清',
+  external_interruption: '外部干扰',
+  other: '其他原因',
+};
 
 export const dailyGoalTargetSchema = z.object({
   id: z.string(),

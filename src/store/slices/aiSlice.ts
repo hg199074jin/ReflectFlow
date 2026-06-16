@@ -11,6 +11,8 @@ export interface StreamingState {
 
 export interface AISlice {
   aiInFlight: Record<string, boolean>;
+  /** Streaming state tracking. Currently unused by goal components (they use local useState),
+   *  but kept as infrastructure for future global AI activity indicators and cross-feature coordination. */
   streamingStates: Record<string, StreamingState>;
   setAIInFlight: (key: string, inFlight: boolean) => void;
   startStreaming: (id: string, feature: string, targetId: string) => void;

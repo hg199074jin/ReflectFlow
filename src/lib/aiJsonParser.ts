@@ -10,12 +10,12 @@ function tryExtractCodeBlock(text: string): string | null {
 }
 
 function tryExtractObject(text: string): string | null {
-  const m = text.match(/\{[\s\S]*\}/);
+  const m = text.match(/\{[\s\S]*?\}/);
   return m ? m[0] : null;
 }
 
 function tryExtractArray(text: string): string | null {
-  const m = text.match(/\[[\s\S]*\]/);
+  const m = text.match(/\[[\s\S]*?\]/);
   return m ? m[0] : null;
 }
 

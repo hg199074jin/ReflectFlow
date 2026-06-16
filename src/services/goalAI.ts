@@ -102,64 +102,55 @@ function collectStream(
   });
 }
 
+/** Generic goal AI call: stream → collect → parse with Zod schema. */
+async function callGoalAI<T>(
+  userPrompt: string,
+  systemNoun: string,
+  schema: z.ZodSchema<T>,
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal; onChunk?: (accumulated: string) => void },
+): Promise<GoalAIResult<T>> {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: `You are a helpful ${systemNoun} coach. Always respond with valid JSON only.` },
+    { role: 'user', content: userPrompt },
+  ];
+  const { fullText, error } = await collectStream(messages, settings, options?.signal, options?.onChunk);
+  if (error) return { success: false, raw: fullText, error: error.message };
+  return parseAIJSON<T>(fullText, schema);
+}
+
 // ---------------------------------------------------------------------------
 // 1. completeGoalDefinition
 // ---------------------------------------------------------------------------
 
-/**
- * Call AI to enrich a goal definition with success criteria, constraints,
- * risks, acceptance method and optional clarification questions.
- */
-export async function completeGoalDefinition(
+/** Call AI to enrich a goal definition with success criteria, constraints, risks, acceptance method. */
+export function completeGoalDefinition(
   goal: Goal,
   settings: LLMSettings,
   options?: { signal?: AbortSignal; onChunk?: (accumulated: string) => void },
 ): Promise<GoalAIResult<GoalDefinitionResult>> {
-  const userPrompt = buildCompleteGoalDefinitionPrompt(goal);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful goal-definition coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal, options?.onChunk);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<GoalDefinitionResult>(fullText, goalDefinitionResultSchema);
+  return callGoalAI(buildCompleteGoalDefinitionPrompt(goal), 'goal-definition', goalDefinitionResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
 // 2. decomposeGoal
 // ---------------------------------------------------------------------------
 
-/**
- * Call AI to decompose a goal into milestones and 7-day daily targets.
- */
-export async function decomposeGoal(
+/** Call AI to decompose a goal into milestones and 7-day daily targets. */
+export function decomposeGoal(
   goal: Goal,
   settings: LLMSettings,
   options?: { signal?: AbortSignal; onChunk?: (accumulated: string) => void },
 ): Promise<GoalAIResult<GoalPlanResult>> {
-  const userPrompt = buildDecomposeGoalPrompt(goal);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful goal decomposition coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal, options?.onChunk);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<GoalPlanResult>(fullText, goalPlanResultSchema);
+  return callGoalAI(buildDecomposeGoalPrompt(goal), 'goal-decomposition', goalPlanResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
 // 3. suggestDailyAdjustment
 // ---------------------------------------------------------------------------
 
-/**
- * Call AI to suggest adjustments after a daily review, given the gap between
- * planned and actual progress.
- */
-export async function suggestDailyAdjustment(
+/** Call AI to suggest adjustments after a daily review, given the gap between planned and actual progress. */
+export function suggestDailyAdjustment(
   goal: Goal,
   _dailyTarget: DailyGoalTarget,
   actualProgress: string,
@@ -168,16 +159,7 @@ export async function suggestDailyAdjustment(
   gap?: string,
   gapReasons?: GapReason[],
 ): Promise<GoalAIResult<DailyAdjustmentResult>> {
-  const userPrompt = buildDailyAdjustmentPrompt(goal, actualProgress, gap, gapReasons);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful daily review coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<DailyAdjustmentResult>(fullText, dailyAdjustmentResultSchema);
+  return callGoalAI(buildDailyAdjustmentPrompt(goal, actualProgress, gap, gapReasons), 'daily-review', dailyAdjustmentResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -202,24 +184,13 @@ const goalQualityResultSchema = z.object({
 });
 export type GoalQualityResult = z.infer<typeof goalQualityResultSchema>;
 
-/**
- * Call AI to score a goal's quality across 10 dimensions.
- */
-export async function scoreGoalQuality(
+/** Call AI to score a goal's quality across 10 dimensions. */
+export function scoreGoalQuality(
   goal: Goal,
   settings: LLMSettings,
   options?: { signal?: AbortSignal },
 ): Promise<GoalAIResult<GoalQualityResult>> {
-  const userPrompt = buildGoalQualityPrompt(goal);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful goal quality assessment coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<GoalQualityResult>(fullText, goalQualityResultSchema);
+  return callGoalAI(buildGoalQualityPrompt(goal), 'goal-quality-assessment', goalQualityResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -244,24 +215,13 @@ const conflictDetectionResultSchema = z.object({
 });
 export type ConflictDetectionResult = z.infer<typeof conflictDetectionResultSchema>;
 
-/**
- * Call AI to detect conflicts among multiple active goals.
- */
-export async function detectGoalConflicts(
+/** Call AI to detect conflicts among multiple active goals. */
+export function detectGoalConflicts(
   goals: Goal[],
   settings: LLMSettings,
   options?: { signal?: AbortSignal },
 ): Promise<GoalAIResult<ConflictDetectionResult>> {
-  const userPrompt = buildConflictDetectionPrompt(goals);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful goal conflict detection coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<ConflictDetectionResult>(fullText, conflictDetectionResultSchema);
+  return callGoalAI(buildConflictDetectionPrompt(goals), 'goal-conflict-detection', conflictDetectionResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -283,10 +243,8 @@ const weeklyGoalReviewResultSchema = z.object({
 });
 export type WeeklyGoalReviewResult = z.infer<typeof weeklyGoalReviewResultSchema>;
 
-/**
- * Call AI to generate a weekly goal review with calibration suggestions.
- */
-export async function generateWeeklyGoalReview(
+/** Call AI to generate a weekly goal review with calibration suggestions. */
+export function generateWeeklyGoalReview(
   weekStart: string,
   weekEnd: string,
   goals: Goal[],
@@ -294,16 +252,7 @@ export async function generateWeeklyGoalReview(
   settings: LLMSettings,
   options?: { signal?: AbortSignal },
 ): Promise<GoalAIResult<WeeklyGoalReviewResult>> {
-  const userPrompt = buildWeeklyGoalReviewPrompt(weekStart, weekEnd, goals, dailyTargets);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful weekly goal review coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<WeeklyGoalReviewResult>(fullText, weeklyGoalReviewResultSchema);
+  return callGoalAI(buildWeeklyGoalReviewPrompt(weekStart, weekEnd, goals, dailyTargets), 'weekly-goal-review', weeklyGoalReviewResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -327,25 +276,14 @@ const goalFinalReportResultSchema = z.object({
 });
 export type GoalFinalReportResult = z.infer<typeof goalFinalReportResultSchema>;
 
-/**
- * Call AI to generate a goal final report based on goal execution and plan.
- */
-export async function generateGoalFinalReport(
+/** Call AI to generate a goal final report based on goal execution and plan. */
+export function generateGoalFinalReport(
   goal: Goal,
   plan: GoalPlan | undefined,
   settings: LLMSettings,
   options?: { signal?: AbortSignal },
 ): Promise<GoalAIResult<GoalFinalReportResult>> {
-  const userPrompt = buildGoalFinalReportPrompt(goal, plan);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful goal final report coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<GoalFinalReportResult>(fullText, goalFinalReportResultSchema);
+  return callGoalAI(buildGoalFinalReportPrompt(goal, plan), 'goal-final-report', goalFinalReportResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -367,25 +305,14 @@ const principleExtractionResultSchema = z.object({
 });
 export type PrincipleExtractionResult = z.infer<typeof principleExtractionResultSchema>;
 
-/**
- * Call AI to extract reusable principles from a goal final report.
- */
-export async function extractGoalPrinciples(
+/** Call AI to extract reusable principles from a goal final report. */
+export function extractGoalPrinciples(
   goal: Goal,
   report: GoalFinalReport,
   settings: LLMSettings,
   options?: { signal?: AbortSignal },
 ): Promise<GoalAIResult<PrincipleExtractionResult>> {
-  const userPrompt = buildPrincipleExtractionPrompt(goal, report);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful principle extraction coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<PrincipleExtractionResult>(fullText, principleExtractionResultSchema);
+  return callGoalAI(buildPrincipleExtractionPrompt(goal, report), 'principle-extraction', principleExtractionResultSchema, settings, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -401,22 +328,11 @@ const premortemResultSchema = z.object({
 });
 export type PremortemResult = z.infer<typeof premortemResultSchema>;
 
-/**
- * Call AI to generate a premortem analysis for a goal.
- */
-export async function generatePremortem(
+/** Call AI to generate a premortem analysis for a goal. */
+export function generatePremortem(
   goal: Goal,
   settings: LLMSettings,
   options?: { signal?: AbortSignal },
 ): Promise<GoalAIResult<PremortemResult>> {
-  const userPrompt = buildPremortemPrompt(goal);
-  const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are a helpful premortem analysis coach. Always respond with valid JSON only.' },
-    { role: 'user', content: userPrompt },
-  ];
-
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
-  if (error) return { success: false, raw: fullText, error: error.message };
-
-  return parseAIJSON<PremortemResult>(fullText, premortemResultSchema);
+  return callGoalAI(buildPremortemPrompt(goal), 'premortem-analysis', premortemResultSchema, settings, options);
 }

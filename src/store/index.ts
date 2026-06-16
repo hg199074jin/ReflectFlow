@@ -11,6 +11,7 @@ import {
   loadGoals, loadReports, loadInsights,
   loadReviewCases, loadPreviewPlans, loadPrinciples,
   loadGoalFinalReports, loadGoalPrincipleExtractions,
+  loadGoalPlans, loadDailyGoalTargets,
 } from './persistence';
 
 import { createEntrySlice, type EntrySlice } from './slices/entrySlice';
@@ -57,31 +58,48 @@ export const useTimelineStore = create<StoreState>()(
       setSelectedMonth: (month) => args[0]({ selectedMonth: month }),
 
       // initialize — loads all data from IndexedDB on app start
+      // Registry pattern: each entry maps a store key to its load function + optional transform.
+      // To add a new entity: add one line here and ensure the slice has the matching state key.
       initialize: async () => {
-        const [entries, settings, weeklyReviews, goals, reports, insights, reviewCases, previewPlans, principles, finalReports, principleExtractions] = await Promise.all([
-          loadEntries(), loadSettings(), loadWeeklyReviews(),
-          loadGoals(), loadReports(), loadInsights(),
-          loadReviewCases(), loadPreviewPlans(), loadPrinciples(),
-          loadGoalFinalReports(), loadGoalPrincipleExtractions(),
-        ]);
-        const entriesMap: Record<string, Entry> = {};
-        for (const e of entries) {
-          entriesMap[e.date] = e;
-        }
-        const finalReportsMap: Record<string, import('../lib/schema').GoalFinalReport> = {};
-        for (const r of finalReports) {
-          finalReportsMap[r.id] = r;
-        }
-        const principleExtractionsMap: Record<string, import('../lib/schema').GoalPrincipleExtraction> = {};
-        for (const p of principleExtractions) {
-          principleExtractionsMap[p.id] = p;
-        }
-        args[0]({
-          entries: entriesMap, settings, weeklyReviews,
-          goals, reports, insights, reviewCases, previewPlans, principles,
-          goalFinalReports: finalReportsMap,
-          goalPrincipleExtractions: principleExtractionsMap,
+        // Loaders that return the value directly (single object or already a map)
+        const directLoaders: Array<[keyof StoreState, () => Promise<unknown>]> = [
+          ['settings', loadSettings],
+          ['weeklyReviews', loadWeeklyReviews],
+          ['goals', loadGoals],
+          ['reports', loadReports],
+          ['insights', loadInsights],
+          ['reviewCases', loadReviewCases],
+          ['previewPlans', loadPreviewPlans],
+          ['principles', loadPrinciples],
+        ];
+
+        // Loaders that return arrays and need id-keyed map conversion
+        type ArrayLoader = [string, () => Promise<Array<Record<string, unknown>>>, (item: Record<string, unknown>) => string];
+        const arrayLoaders: ArrayLoader[] = [
+          ['entries', loadEntries, (e) => (e as Entry).date],
+          ['goalFinalReports', loadGoalFinalReports, (r) => (r as import('../lib/schema').GoalFinalReport).id],
+          ['goalPrincipleExtractions', loadGoalPrincipleExtractions, (p) => (p as import('../lib/schema').GoalPrincipleExtraction).id],
+          ['goalPlans', loadGoalPlans, (p) => (p as import('../lib/schema').GoalPlan).id],
+          ['dailyGoalTargets', loadDailyGoalTargets, (t) => (t as import('../lib/schema').DailyGoalTarget).id],
+        ];
+
+        // Run all loaders in parallel
+        const directResults = await Promise.all(directLoaders.map(([, fn]) => fn()));
+        const arrayResults = await Promise.all(arrayLoaders.map(([, fn]) => fn()));
+
+        // Build the partial state
+        const partial: Record<string, unknown> = {};
+        directLoaders.forEach(([key], i) => { partial[key as string] = directResults[i]; });
+        arrayLoaders.forEach(([key, , keyFn], i) => {
+          const map: Record<string, unknown> = {};
+          const items = arrayResults[i] ?? [];
+          for (const item of items) {
+            map[keyFn(item)] = item;
+          }
+          partial[key] = map;
         });
+
+        args[0](partial as Partial<StoreState>);
       },
     }),
     { name: 'TimelineStore' },

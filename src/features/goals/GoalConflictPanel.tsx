@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTimelineStore } from '../../store';
 import { detectGoalConflicts } from '../../services/goalAI';
+import { saveGoalConflict } from '../../store/persistence';
 import { Button } from '../../components/primitives/Button';
+import { useAIStreaming } from '../../hooks/useAIStreaming';
 import { createId } from '../../lib/ids';
 import type { GoalConflict } from '../../lib/schema';
 
@@ -33,8 +35,6 @@ const SEVERITY_LABELS: Record<string, string> = {
 export function GoalConflictPanel() {
   const goals = useTimelineStore((s) => s.goals);
   const settings = useTimelineStore((s) => s.settings);
-  const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<GoalConflict[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -43,37 +43,34 @@ export function GoalConflictPanel() {
     [goals],
   );
 
-  const handleDetect = async () => {
+  const handleSuccess = useCallback((data: import('../../services/goalAI').ConflictDetectionResult) => {
+    const now = new Date().toISOString();
+    const newConflicts: GoalConflict[] = data.conflicts.map((c) => ({
+      id: createId(),
+      goalIds: c.goalIds,
+      type: c.type,
+      severity: c.severity,
+      description: c.description,
+      evidence: c.evidence,
+      suggestion: c.suggestion,
+      createdAt: now,
+    }));
+    setConflicts(newConflicts);
+    for (const c of newConflicts) {
+      saveGoalConflict(c);
+    }
+  }, []);
+
+  const { streaming, error, execute } = useAIStreaming({
+    run: (signal) => detectGoalConflicts(activeGoals, settings.llm, { signal }),
+    onSuccess: handleSuccess,
+  });
+
+  const handleDetect = () => {
     if (activeGoals.length < 2) {
-      setError('需要至少 2 个活跃目标才能检测冲突');
       return;
     }
-
-    setStreaming(true);
-    setError(null);
-    try {
-      const result = await detectGoalConflicts(activeGoals, settings.llm);
-      if (result.success) {
-        const now = new Date().toISOString();
-        const newConflicts: GoalConflict[] = result.data.conflicts.map((c) => ({
-          id: createId(),
-          goalIds: c.goalIds,
-          type: c.type,
-          severity: c.severity,
-          description: c.description,
-          evidence: c.evidence,
-          suggestion: c.suggestion,
-          createdAt: now,
-        }));
-        setConflicts(newConflicts);
-      } else {
-        setError('解析失败：' + result.error);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '未知错误');
-    } finally {
-      setStreaming(false);
-    }
+    execute();
   };
 
   const toggleExpand = (id: string) => {

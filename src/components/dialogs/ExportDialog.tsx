@@ -3,6 +3,7 @@ import { endOfMonth, format } from 'date-fns';
 import { useTimelineStore } from '../../store';
 import { createMarkdownZip } from '../../services/export/zip';
 import { exportNodeAsPng } from '../../services/export/png';
+import { downloadFile } from '../../services/export/download';
 import { Button } from '../primitives/Button';
 import { Input } from '../primitives/Input';
 
@@ -42,12 +43,7 @@ export function ExportDialog({ onClose }: ExportDialogProps) {
           includePrinciples,
         },
       });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = `timeline-export-${new Date().toISOString().slice(0, 10)}.zip`;
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadFile(`timeline-export-${new Date().toISOString().slice(0, 10)}.zip`, blob);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : '导出失败');

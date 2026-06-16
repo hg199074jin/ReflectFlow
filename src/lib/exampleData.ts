@@ -1,6 +1,7 @@
-import { addDays, subDays, format } from 'date-fns';
+import { addDays, subDays } from 'date-fns';
 import type { Goal, Entry, DailyGoalTarget, Principle } from './schema';
 import { createId } from './ids';
+import { toDateKey } from './date';
 
 /**
  * Generate example data for first-time users.
@@ -13,8 +14,8 @@ export function getExampleData(): {
   principles: Principle[];
 } {
   const today = new Date();
-  const goalStartDate = format(subDays(today, 5), 'yyyy-MM-dd');
-  const goalEndDate = format(addDays(today, 25), 'yyyy-MM-dd');
+  const goalStartDate = toDateKey(subDays(today, 5));
+  const goalEndDate = toDateKey(addDays(today, 25));
 
   const goalId = createId();
 
@@ -47,7 +48,7 @@ export function getExampleData(): {
   // Generate 3 days of entries
   const entries: Entry[] = [];
   for (let i = 2; i >= 0; i--) {
-    const date = format(subDays(today, i), 'yyyy-MM-dd');
+    const date = toDateKey(subDays(today, i));
     entries.push({
       id: createId(),
       date,
@@ -71,7 +72,7 @@ export function getExampleData(): {
   // Generate daily targets
   const dailyTargets: DailyGoalTarget[] = [];
   for (let i = 2; i >= 0; i--) {
-    const date = format(subDays(today, i), 'yyyy-MM-dd');
+    const date = toDateKey(subDays(today, i));
     dailyTargets.push({
       id: createId(),
       goalId,
@@ -103,8 +104,8 @@ export function getExampleData(): {
       applicableContexts: ['工作日晚上进行个人项目开发'],
       boundaries: ['周末有完整半天时间时，可以安排较大任务'],
       verificationStatus: 'validated',
-      createdAt: format(subDays(today, 3), 'yyyy-MM-dd'),
-      updatedAt: format(subDays(today, 3), 'yyyy-MM-dd'),
+      createdAt: toDateKey(subDays(today, 3)),
+      updatedAt: toDateKey(subDays(today, 3)),
     },
   ];
 

@@ -57,6 +57,7 @@ export function isGoalStale(goal: Goal, entries: Record<string, Entry>): boolean
 
 export function getGoalStatusColor(status: GoalStatus): string {
   switch (status) {
+    case 'draft': return '#9ca3af';
     case 'active': return '#10b981';
     case 'done': return '#6b7280';
     case 'paused': return '#f59e0b';
@@ -67,6 +68,7 @@ export function getGoalStatusColor(status: GoalStatus): string {
 
 export function getGoalStatusLabel(status: GoalStatus): string {
   switch (status) {
+    case 'draft': return '草稿';
     case 'active': return '进行中';
     case 'done': return '已完成';
     case 'paused': return '已暂停';

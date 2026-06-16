@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTimelineStore } from '../../store';
 import { generatePremortem } from '../../services/goalAI';
 import { createId } from '../../lib/ids';
-import { saveGoalPremortem } from '../../store/persistence';
 import { Button } from '../../components/primitives/Button';
+import { useAIStreaming } from '../../hooks/useAIStreaming';
 import type { Goal, GoalPremortem } from '../../lib/schema';
 import type { PremortemResult } from '../../services/goalAI';
 
@@ -13,38 +13,42 @@ interface Props {
 
 export function GoalPremortemPanel({ goal }: Props) {
   const settings = useTimelineStore((s) => s.settings);
-  const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<PremortemResult | null>(null);
+  const upsertGoalPremortem = useTimelineStore((s) => s.upsertGoalPremortem);
+  const goalPremortems = useTimelineStore((s) => s.goalPremortems);
 
-  const handleGenerate = async () => {
-    setStreaming(true);
-    setError(null);
-    try {
-      const aiResult = await generatePremortem(goal, settings.llm);
-      if (aiResult.success) {
-        setResult(aiResult.data);
-        // Persist the premortem
-        const premortem: GoalPremortem = {
-          id: createId(),
-          goalId: goal.id,
-          predictedFailureReasons: aiResult.data.predictedFailureReasons,
-          underestimatedConstraints: aiResult.data.underestimatedConstraints,
-          likelyDelays: aiResult.data.likelyDelays,
-          triggerConditions: aiResult.data.triggerConditions,
-          minimumViablePath: aiResult.data.minimumViablePath,
-          createdAt: new Date().toISOString(),
-        };
-        saveGoalPremortem(premortem);
-      } else {
-        setError('解析失败：' + aiResult.error);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '未知错误');
-    } finally {
-      setStreaming(false);
-    }
-  };
+  // Load existing premortem from store on mount
+  const existingPremortem = Object.values(goalPremortems).find(p => p.goalId === goal.id);
+  const [result, setResult] = useState<PremortemResult | null>(
+    existingPremortem
+      ? {
+          predictedFailureReasons: existingPremortem.predictedFailureReasons,
+          underestimatedConstraints: existingPremortem.underestimatedConstraints,
+          likelyDelays: existingPremortem.likelyDelays,
+          triggerConditions: existingPremortem.triggerConditions,
+          minimumViablePath: existingPremortem.minimumViablePath,
+        }
+      : null,
+  );
+
+  const handleSuccess = useCallback((data: PremortemResult) => {
+    setResult(data);
+    const premortem: GoalPremortem = {
+      id: existingPremortem?.id ?? createId(),
+      goalId: goal.id,
+      predictedFailureReasons: data.predictedFailureReasons,
+      underestimatedConstraints: data.underestimatedConstraints,
+      likelyDelays: data.likelyDelays,
+      triggerConditions: data.triggerConditions,
+      minimumViablePath: data.minimumViablePath,
+      createdAt: existingPremortem?.createdAt ?? new Date().toISOString(),
+    };
+    upsertGoalPremortem(premortem);
+  }, [existingPremortem, goal.id, upsertGoalPremortem]);
+
+  const { streaming, error, execute } = useAIStreaming({
+    run: (signal) => generatePremortem(goal, settings.llm, { signal }),
+    onSuccess: handleSuccess,
+  });
 
   return (
     <div className="goal-premortem-panel">
@@ -112,7 +116,7 @@ export function GoalPremortemPanel({ goal }: Props) {
         <p className="premortem-empty">尚未进行事前推演，点击下方按钮让 AI 分析可能的风险。</p>
       )}
 
-      <Button onClick={handleGenerate} disabled={streaming} variant="secondary">
+      <Button onClick={execute} disabled={streaming} variant="secondary">
         {streaming ? '分析中...' : result ? '重新推演' : 'AI 事前推演'}
       </Button>
 

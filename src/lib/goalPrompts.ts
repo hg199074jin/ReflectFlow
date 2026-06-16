@@ -1,3 +1,4 @@
+import { GAP_REASON_LABELS } from './schema';
 import type { Goal, GoalPlan, GoalFinalReport, DailyGoalTarget, GapReason } from './schema';
 
 /**
@@ -122,18 +123,6 @@ ${goalInfo}
   ]
 }`;
 }
-
-/** 差距原因中文映射 */
-const GAP_REASON_LABELS: Record<GapReason, string> = {
-  not_enough_time: '时间不足',
-  task_too_large: '任务过大',
-  technical_blocker: '技术阻碍',
-  priority_conflict: '优先级冲突',
-  low_energy: '精力不足',
-  unclear_goal: '目标不清',
-  external_interruption: '外部干扰',
-  other: '其他原因',
-};
 
 /**
  * 每日复盘调整

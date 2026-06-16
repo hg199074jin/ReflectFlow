@@ -1,10 +1,11 @@
-import type { Goal, GoalPlan, DailyGoalTarget, GoalFinalReport, GoalPrincipleExtraction } from '../../lib/schema';
+import type { Goal, GoalPlan, DailyGoalTarget, GoalFinalReport, GoalPrincipleExtraction, GoalPremortem } from '../../lib/schema';
 import type { GoalDefinitionResult } from '../../services/goalAI';
 import type { SliceCreator } from './sliceTypes';
 import {
   saveGoal, deleteGoal as deleteGoalFromDB,
   saveGoalPlan, saveDailyGoalTarget, updateDailyGoalTarget as updateDailyGoalTargetDB,
   saveGoalFinalReport, saveGoalPrincipleExtraction,
+  saveGoalPremortem as saveGoalPremortemDB,
 } from '../persistence';
 
 export interface GoalSlice {
@@ -20,6 +21,7 @@ export interface GoalSlice {
   dailyGoalTargets: Record<string, DailyGoalTarget>;
   goalFinalReports: Record<string, GoalFinalReport>;
   goalPrincipleExtractions: Record<string, GoalPrincipleExtraction>;
+  goalPremortems: Record<string, GoalPremortem>;
 
   // new actions
   addGoalPlan: (plan: GoalPlan) => void;
@@ -30,6 +32,7 @@ export interface GoalSlice {
   applyGoalDefinitionResult: (goalId: string, result: GoalDefinitionResult) => void;
   upsertGoalFinalReport: (report: GoalFinalReport) => void;
   upsertGoalPrincipleExtraction: (extraction: GoalPrincipleExtraction) => void;
+  upsertGoalPremortem: (premortem: GoalPremortem) => void;
 }
 
 export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
@@ -38,6 +41,7 @@ export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
   dailyGoalTargets: {},
   goalFinalReports: {},
   goalPrincipleExtractions: {},
+  goalPremortems: {},
 
   upsertGoal: async (goal) => {
     const { goals } = get();
@@ -165,5 +169,13 @@ export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
     const { goalPrincipleExtractions } = get();
     set({ goalPrincipleExtractions: { ...goalPrincipleExtractions, [extraction.id]: extraction } });
     saveGoalPrincipleExtraction(extraction);
+  },
+
+  // --- Goal Premortems ---
+
+  upsertGoalPremortem: (premortem) => {
+    const { goalPremortems } = get();
+    set({ goalPremortems: { ...goalPremortems, [premortem.id]: premortem } });
+    saveGoalPremortemDB(premortem);
   },
 });

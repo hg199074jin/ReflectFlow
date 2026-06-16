@@ -1,22 +1,13 @@
 import { useMemo } from 'react';
-import { useTimelineStore, getEntriesForWeek } from '../../store';
+import { useTimelineStore } from '../../store';
 import { toDateKey, getWeekRange } from '../../lib/date';
 import { getGoalStatusColor, getGoalStatusLabel } from '../goals/goalUtils';
-import type { GapReason } from '../../lib/schema';
-
-const GAP_REASON_LABELS: Record<GapReason, string> = {
-  not_enough_time: '时间不足',
-  task_too_large: '任务过大',
-  technical_blocker: '技术阻碍',
-  priority_conflict: '优先级冲突',
-  low_energy: '精力不足',
-  unclear_goal: '目标不清',
-  external_interruption: '外部干扰',
-  other: '其他原因',
-};
+import { GAP_REASON_LABELS } from '../../lib/schema';
+import type { Entry } from '../../lib/schema';
 
 export function WeeklyReviewDashboard() {
   const goals = useTimelineStore((s) => s.goals);
+  const entries = useTimelineStore((s) => s.entries);
   const dailyGoalTargets = useTimelineStore((s) => s.dailyGoalTargets);
   const insights = useTimelineStore((s) => s.insights);
   const principles = useTimelineStore((s) => s.principles);
@@ -35,10 +26,12 @@ export function WeeklyReviewDashboard() {
     );
   }, [goals, weekRange]);
 
-  // 2. This week's entries summary
+  // 2. This week's entries summary (reactive to entry changes)
   const weekEntries = useMemo(() => {
-    return getEntriesForWeek(weekRange.start);
-  }, [weekRange]);
+    return Object.values(entries).filter(
+      (e: Entry) => e.date >= weekRange.start && e.date <= weekRange.end,
+    );
+  }, [entries, weekRange]);
 
   const entrySummary = useMemo(() => {
     const totalDays = weekEntries.length;

@@ -3,6 +3,8 @@ import {
   entrySchema, settingsSchema, weeklyReviewSchema,
   goalSchema, generatedReportSchema, insightSchema,
   reviewCaseSchema, previewPlanSchema, principleSchema,
+  goalPlanSchema, dailyGoalTargetSchema, goalConflictSchema,
+  goalPremortemSchema,
   type Entry, type Settings, type WeeklyReview,
   type Goal, type GeneratedReport, type Insight,
   type ReviewCase, type PreviewPlan, type Principle,
@@ -370,7 +372,16 @@ export async function saveGoalPlan(plan: GoalPlan): Promise<void> {
 }
 export async function loadGoalPlans(): Promise<GoalPlan[]> {
   const db = await getDB();
-  return db.getAll(GOAL_PLANS_STORE);
+  const raw = await db.getAll(GOAL_PLANS_STORE);
+  const result: GoalPlan[] = [];
+  for (const item of raw) {
+    try {
+      result.push(goalPlanSchema.parse(item));
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
 }
 export async function deleteGoalPlan(id: string): Promise<void> {
   const db = await getDB();
@@ -384,7 +395,16 @@ export async function saveDailyGoalTarget(target: DailyGoalTarget): Promise<void
 }
 export async function loadDailyGoalTargets(): Promise<DailyGoalTarget[]> {
   const db = await getDB();
-  return db.getAll(DAILY_GOAL_TARGETS_STORE);
+  const raw = await db.getAll(DAILY_GOAL_TARGETS_STORE);
+  const result: DailyGoalTarget[] = [];
+  for (const item of raw) {
+    try {
+      result.push(dailyGoalTargetSchema.parse(item));
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
 }
 export async function updateDailyGoalTarget(target: DailyGoalTarget): Promise<void> {
   return saveDailyGoalTarget(target);
@@ -401,7 +421,16 @@ export async function saveGoalConflict(c: GoalConflict): Promise<void> {
 }
 export async function loadGoalConflicts(): Promise<GoalConflict[]> {
   const db = await getDB();
-  return db.getAll(GOAL_CONFLICTS_STORE);
+  const raw = await db.getAll(GOAL_CONFLICTS_STORE);
+  const result: GoalConflict[] = [];
+  for (const item of raw) {
+    try {
+      result.push(goalConflictSchema.parse(item));
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
 }
 export async function deleteGoalConflict(id: string): Promise<void> {
   const db = await getDB();
@@ -445,7 +474,16 @@ export async function saveGoalPremortem(p: GoalPremortem): Promise<void> {
 }
 export async function loadGoalPremortems(): Promise<GoalPremortem[]> {
   const db = await getDB();
-  return db.getAll(GOAL_PREMORTEMS_STORE);
+  const raw = await db.getAll(GOAL_PREMORTEMS_STORE);
+  const result: GoalPremortem[] = [];
+  for (const item of raw) {
+    try {
+      result.push(goalPremortemSchema.parse(item));
+    } catch {
+      // skip invalid
+    }
+  }
+  return result;
 }
 
 // Goal Premortem Reviews
