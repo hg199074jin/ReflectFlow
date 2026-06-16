@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useTimelineStore } from '../../store';
 import { decomposeGoal } from '../../services/goalAI';
 import { createId } from '../../lib/ids';
@@ -17,6 +17,8 @@ export function GoalPlanPanel({ goal }: Props) {
   const settings = useTimelineStore((s) => s.settings);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [streamedText, setStreamedText] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
 
   const existingPlans = useMemo(
     () => Object.values(goalPlans).filter((p) => p.goalId === goal.id),
@@ -34,8 +36,16 @@ export function GoalPlanPanel({ goal }: Props) {
   const handleDecompose = async () => {
     setStreaming(true);
     setError(null);
+    setStreamedText('');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const result = await decomposeGoal(goal, settings.llm);
+      const result = await decomposeGoal(goal, settings.llm, {
+        signal: controller.signal,
+        onChunk: (accumulated) => setStreamedText(accumulated),
+      });
       if (result.success) {
         const now = new Date().toISOString();
         const plan: GoalPlan = {
@@ -54,11 +64,21 @@ export function GoalPlanPanel({ goal }: Props) {
         setError('解析失败：' + result.error);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '未知错误');
+      if (controller.signal.aborted) {
+        setError('已取消生成');
+      } else {
+        setError(e instanceof Error ? e.message : '未知错误');
+      }
     } finally {
       setStreaming(false);
+      setStreamedText('');
+      abortRef.current = null;
     }
   };
+
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   return (
     <div className="goal-plan-panel">
@@ -115,9 +135,28 @@ export function GoalPlanPanel({ goal }: Props) {
         <p className="goal-plan-empty">尚未生成计划，点击下方按钮让 AI 拆解为每日目标。</p>
       )}
 
-      <Button onClick={handleDecompose} disabled={streaming} variant="secondary">
-        {streaming ? '生成中...' : existingPlans.length > 0 ? '重新拆解计划' : 'AI 拆解为每日目标'}
-      </Button>
+      {streaming && (
+        <div className="streaming-preview">
+          <div className="streaming-progress">
+            生成中... [已生成 {streamedText.length} 字]
+          </div>
+          <pre className="streaming-text">
+            {streamedText}
+            <span className="streaming-cursor">|</span>
+          </pre>
+        </div>
+      )}
+
+      <div className="goal-plan-actions">
+        <Button onClick={handleDecompose} disabled={streaming} variant="secondary">
+          {streaming ? '生成中...' : existingPlans.length > 0 ? '重新拆解计划' : 'AI 拆解为每日目标'}
+        </Button>
+        {streaming && (
+          <Button onClick={handleCancel} variant="ghost" size="sm">
+            取消
+          </Button>
+        )}
+      </div>
 
       {error && <div className="goal-plan-error">{error}</div>}
     </div>

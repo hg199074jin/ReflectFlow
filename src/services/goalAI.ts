@@ -86,11 +86,15 @@ function collectStream(
   messages: ChatMessage[],
   settings: LLMSettings,
   signal?: AbortSignal,
+  onChunk?: (accumulated: string) => void,
 ): Promise<{ fullText: string; error?: Error }> {
   return new Promise((resolve) => {
     let fullText = '';
     streamChatCompletion(messages, settings, {
-      onChunk: (chunk) => { fullText += chunk; },
+      onChunk: (chunk) => {
+        fullText += chunk;
+        onChunk?.(fullText);
+      },
       onComplete: () => resolve({ fullText }),
       onError: (err) => resolve({ fullText, error: err }),
       signal,
@@ -109,7 +113,7 @@ function collectStream(
 export async function completeGoalDefinition(
   goal: Goal,
   settings: LLMSettings,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; onChunk?: (accumulated: string) => void },
 ): Promise<GoalAIResult<GoalDefinitionResult>> {
   const userPrompt = buildCompleteGoalDefinitionPrompt(goal);
   const messages: ChatMessage[] = [
@@ -117,7 +121,7 @@ export async function completeGoalDefinition(
     { role: 'user', content: userPrompt },
   ];
 
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  const { fullText, error } = await collectStream(messages, settings, options?.signal, options?.onChunk);
   if (error) return { success: false, raw: fullText, error: error.message };
 
   return parseAIJSON<GoalDefinitionResult>(fullText, goalDefinitionResultSchema);
@@ -133,7 +137,7 @@ export async function completeGoalDefinition(
 export async function decomposeGoal(
   goal: Goal,
   settings: LLMSettings,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; onChunk?: (accumulated: string) => void },
 ): Promise<GoalAIResult<GoalPlanResult>> {
   const userPrompt = buildDecomposeGoalPrompt(goal);
   const messages: ChatMessage[] = [
@@ -141,7 +145,7 @@ export async function decomposeGoal(
     { role: 'user', content: userPrompt },
   ];
 
-  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  const { fullText, error } = await collectStream(messages, settings, options?.signal, options?.onChunk);
   if (error) return { success: false, raw: fullText, error: error.message };
 
   return parseAIJSON<GoalPlanResult>(fullText, goalPlanResultSchema);
