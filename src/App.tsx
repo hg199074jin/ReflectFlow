@@ -15,8 +15,10 @@ import { ReviewCasesView } from './features/reviewCases/ReviewCasesView';
 import { PreviewPlansView } from './features/preview/PreviewPlansView';
 import { PrinciplesView } from './features/principles/PrinciplesView';
 import { DashboardView } from './features/dashboard/DashboardView';
+import { WeeklyReviewDashboard } from './features/dashboard/WeeklyReviewDashboard';
 import { CoachPanel } from './features/coach/CoachPanel';
 import { SearchView } from './components/views/SearchView';
+import { ExampleDataLoader } from './components/cards/ExampleDataLoader';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { ExportDialog } from './components/dialogs/ExportDialog';
 import { Button } from './components/primitives/Button';
@@ -86,6 +88,7 @@ export default function App() {
     { key: 'review', label: '复盘' },
     { key: 'goals', label: '目标' },
     { key: 'dashboard', label: '总览' },
+    { key: 'weekly-dashboard', label: '我的一周复盘' },
     { key: 'preview', label: '事前沙盘' },
     { key: 'reports', label: '报告' },
     { key: 'insights', label: '洞察' },
@@ -111,6 +114,8 @@ export default function App() {
           <Button variant="secondary" onClick={() => setShowExport(true)}>导出</Button>
         </div>
       </header>
+
+      <ExampleDataLoader />
 
       <nav className="app-mode-nav">
         {modes.map((mode) => (
@@ -160,6 +165,7 @@ export default function App() {
             )}
             {view === 'goals' && <GoalsView />}
             {view === 'dashboard' && <DashboardView />}
+            {view === 'weekly-dashboard' && <WeeklyReviewDashboard />}
             {view === 'preview' && <PreviewPlansView />}
             {view === 'reports' && <ReportsView />}
             {view === 'insights' && <InsightsView />}

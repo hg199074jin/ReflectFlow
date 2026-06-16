@@ -113,7 +113,7 @@ export const settingsSchema = z.object({
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
-export type ViewMode = 'cards' | 'experience' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights' | 'reviews' | 'preview' | 'principles' | 'search' | 'dashboard' | 'coach';
+export type ViewMode = 'cards' | 'experience' | 'gantt' | 'stats' | 'review' | 'goals' | 'reports' | 'insights' | 'reviews' | 'preview' | 'principles' | 'search' | 'dashboard' | 'weekly-dashboard' | 'coach';
 export type AppMode = 'checkin' | 'browse';
 
 export interface ClassifiableBullet {
