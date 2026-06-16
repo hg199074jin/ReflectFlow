@@ -8,9 +8,11 @@ import {
   buildGoalQualityPrompt,
   buildConflictDetectionPrompt,
   buildWeeklyGoalReviewPrompt,
+  buildGoalFinalReportPrompt,
+  buildPrincipleExtractionPrompt,
 } from '../lib/goalPrompts';
 import type { LLMSettings } from './llm/types';
-import type { Goal, DailyGoalTarget, GapReason } from '../lib/schema';
+import type { Goal, GoalPlan, GoalFinalReport, DailyGoalTarget, GapReason } from '../lib/schema';
 
 // ---------------------------------------------------------------------------
 // Zod schemas for validating AI responses
@@ -297,4 +299,86 @@ export async function generateWeeklyGoalReview(
   if (error) return { success: false, raw: fullText, error: error.message };
 
   return parseAIJSON<WeeklyGoalReviewResult>(fullText, weeklyGoalReviewResultSchema);
+}
+
+// ---------------------------------------------------------------------------
+// 7. generateGoalFinalReport
+// ---------------------------------------------------------------------------
+
+const goalFinalReportResultSchema = z.object({
+  title: z.string(),
+  originalGoal: z.string(),
+  successCriteria: z.array(z.string()),
+  finalOutcome: z.string(),
+  completionLevel: z.enum(['completed', 'partially_completed', 'failed', 'abandoned']),
+  keyActions: z.array(z.string()),
+  majorDeviations: z.array(z.string()),
+  rootCauses: z.array(z.string()),
+  adjustments: z.array(z.string()),
+  effectiveActions: z.array(z.string()),
+  ineffectiveActions: z.array(z.string()),
+  principles: z.array(z.string()),
+  nextTimeSuggestions: z.array(z.string()),
+});
+export type GoalFinalReportResult = z.infer<typeof goalFinalReportResultSchema>;
+
+/**
+ * Call AI to generate a goal final report based on goal execution and plan.
+ */
+export async function generateGoalFinalReport(
+  goal: Goal,
+  plan: GoalPlan | undefined,
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal },
+): Promise<GoalAIResult<GoalFinalReportResult>> {
+  const userPrompt = buildGoalFinalReportPrompt(goal, plan);
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a helpful goal final report coach. Always respond with valid JSON only.' },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  if (error) return { success: false, raw: fullText, error: error.message };
+
+  return parseAIJSON<GoalFinalReportResult>(fullText, goalFinalReportResultSchema);
+}
+
+// ---------------------------------------------------------------------------
+// 8. extractGoalPrinciples
+// ---------------------------------------------------------------------------
+
+const principleItemSchema = z.object({
+  principleTitle: z.string(),
+  principleContent: z.string(),
+  sourceEvidence: z.array(z.string()),
+  applicableScenarios: z.array(z.string()),
+  boundaryConditions: z.array(z.string()),
+  counterExamples: z.array(z.string()),
+  confidence: z.enum(['low', 'medium', 'high']),
+});
+
+const principleExtractionResultSchema = z.object({
+  principles: z.array(principleItemSchema),
+});
+export type PrincipleExtractionResult = z.infer<typeof principleExtractionResultSchema>;
+
+/**
+ * Call AI to extract reusable principles from a goal final report.
+ */
+export async function extractGoalPrinciples(
+  goal: Goal,
+  report: GoalFinalReport,
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal },
+): Promise<GoalAIResult<PrincipleExtractionResult>> {
+  const userPrompt = buildPrincipleExtractionPrompt(goal, report);
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a helpful principle extraction coach. Always respond with valid JSON only.' },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  if (error) return { success: false, raw: fullText, error: error.message };
+
+  return parseAIJSON<PrincipleExtractionResult>(fullText, principleExtractionResultSchema);
 }

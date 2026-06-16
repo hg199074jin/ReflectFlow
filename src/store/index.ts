@@ -10,6 +10,7 @@ import {
   loadEntries, loadSettings, loadWeeklyReviews,
   loadGoals, loadReports, loadInsights,
   loadReviewCases, loadPreviewPlans, loadPrinciples,
+  loadGoalFinalReports, loadGoalPrincipleExtractions,
 } from './persistence';
 
 import { createEntrySlice, type EntrySlice } from './slices/entrySlice';
@@ -57,18 +58,29 @@ export const useTimelineStore = create<StoreState>()(
 
       // initialize — loads all data from IndexedDB on app start
       initialize: async () => {
-        const [entries, settings, weeklyReviews, goals, reports, insights, reviewCases, previewPlans, principles] = await Promise.all([
+        const [entries, settings, weeklyReviews, goals, reports, insights, reviewCases, previewPlans, principles, finalReports, principleExtractions] = await Promise.all([
           loadEntries(), loadSettings(), loadWeeklyReviews(),
           loadGoals(), loadReports(), loadInsights(),
           loadReviewCases(), loadPreviewPlans(), loadPrinciples(),
+          loadGoalFinalReports(), loadGoalPrincipleExtractions(),
         ]);
         const entriesMap: Record<string, Entry> = {};
         for (const e of entries) {
           entriesMap[e.date] = e;
         }
+        const finalReportsMap: Record<string, import('../lib/schema').GoalFinalReport> = {};
+        for (const r of finalReports) {
+          finalReportsMap[r.id] = r;
+        }
+        const principleExtractionsMap: Record<string, import('../lib/schema').GoalPrincipleExtraction> = {};
+        for (const p of principleExtractions) {
+          principleExtractionsMap[p.id] = p;
+        }
         args[0]({
           entries: entriesMap, settings, weeklyReviews,
           goals, reports, insights, reviewCases, previewPlans, principles,
+          goalFinalReports: finalReportsMap,
+          goalPrincipleExtractions: principleExtractionsMap,
         });
       },
     }),

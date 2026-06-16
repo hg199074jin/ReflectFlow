@@ -1,9 +1,10 @@
-import type { Goal, GoalPlan, DailyGoalTarget } from '../../lib/schema';
+import type { Goal, GoalPlan, DailyGoalTarget, GoalFinalReport, GoalPrincipleExtraction } from '../../lib/schema';
 import type { GoalDefinitionResult } from '../../services/goalAI';
 import type { SliceCreator } from './sliceTypes';
 import {
   saveGoal, deleteGoal as deleteGoalFromDB,
   saveGoalPlan, saveDailyGoalTarget, updateDailyGoalTarget as updateDailyGoalTargetDB,
+  saveGoalFinalReport, saveGoalPrincipleExtraction,
 } from '../persistence';
 
 export interface GoalSlice {
@@ -17,6 +18,8 @@ export interface GoalSlice {
   // new state
   goalPlans: Record<string, GoalPlan>;
   dailyGoalTargets: Record<string, DailyGoalTarget>;
+  goalFinalReports: Record<string, GoalFinalReport>;
+  goalPrincipleExtractions: Record<string, GoalPrincipleExtraction>;
 
   // new actions
   addGoalPlan: (plan: GoalPlan) => void;
@@ -25,12 +28,16 @@ export interface GoalSlice {
   updateDailyGoalTarget: (id: string, patch: Partial<DailyGoalTarget>) => void;
   getDailyTargetsByDate: (date: string) => DailyGoalTarget[];
   applyGoalDefinitionResult: (goalId: string, result: GoalDefinitionResult) => void;
+  upsertGoalFinalReport: (report: GoalFinalReport) => void;
+  upsertGoalPrincipleExtraction: (extraction: GoalPrincipleExtraction) => void;
 }
 
 export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
   goals: {},
   goalPlans: {},
   dailyGoalTargets: {},
+  goalFinalReports: {},
+  goalPrincipleExtractions: {},
 
   upsertGoal: async (goal) => {
     const { goals } = get();
@@ -142,5 +149,21 @@ export const createGoalSlice: SliceCreator<GoalSlice> = (set, get) => ({
     };
     set({ goals: { ...goals, [goalId]: updated } });
     saveGoal(updated);
+  },
+
+  // --- Goal Final Reports ---
+
+  upsertGoalFinalReport: (report) => {
+    const { goalFinalReports } = get();
+    set({ goalFinalReports: { ...goalFinalReports, [report.id]: report } });
+    saveGoalFinalReport(report);
+  },
+
+  // --- Goal Principle Extractions ---
+
+  upsertGoalPrincipleExtraction: (extraction) => {
+    const { goalPrincipleExtractions } = get();
+    set({ goalPrincipleExtractions: { ...goalPrincipleExtractions, [extraction.id]: extraction } });
+    saveGoalPrincipleExtraction(extraction);
   },
 });

@@ -8,6 +8,7 @@ import { createEmptyGoal } from './goalUtils';
 import { GoalDefinitionPanel } from './GoalDefinitionPanel';
 import { GoalPlanPanel } from './GoalPlanPanel';
 import { GoalQualityScoreCard } from './GoalQualityScoreCard';
+import { GoalFinalReportView } from './GoalFinalReportView';
 import { RiskWarningBanner } from './RiskWarningBanner';
 import type { Goal, GoalPeriod, GoalStatus } from '../../lib/schema';
 
@@ -123,6 +124,9 @@ export function GoalEditor({ goal, onClose }: GoalEditorProps) {
             <GoalDefinitionPanel goal={goal} />
             <GoalPlanPanel goal={goal} />
             <GoalQualityScoreCard goal={goal} />
+            {(goal.status === 'done' || goal.status === 'dropped' || goal.status === 'paused') && (
+              <GoalFinalReportView goal={goal} />
+            )}
           </div>
         )}
         <div className="dialog-actions">

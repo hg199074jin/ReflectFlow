@@ -1,4 +1,4 @@
-import type { Goal, DailyGoalTarget, GapReason } from './schema';
+import type { Goal, GoalPlan, GoalFinalReport, DailyGoalTarget, GapReason } from './schema';
 
 /**
  * AI 补全目标定义
@@ -326,6 +326,64 @@ ${goalsInfo}
       "description": "冲突描述",
       "evidence": ["证据1", "证据2"],
       "suggestion": "解决建议"
+    }
+  ]
+}`;
+}
+
+/**
+ * 目标结案报告
+ * 根据目标执行情况和计划，生成一份完整的目标结案报告。
+ */
+export function buildGoalFinalReportPrompt(goal: Goal, plan?: GoalPlan): string {
+  return `你是 ReflectFlow 的目标结案报告教练。
+请根据以下目标执行情况，生成一份完整的目标结案报告。
+
+目标信息：
+${JSON.stringify(goal, null, 2)}
+
+${plan ? `目标计划：\n${JSON.stringify(plan, null, 2)}` : ''}
+
+请输出以下 JSON：
+{
+  "title": "...",
+  "originalGoal": "...",
+  "successCriteria": ["..."],
+  "finalOutcome": "...",
+  "completionLevel": "completed" | "partially_completed" | "failed" | "abandoned",
+  "keyActions": ["..."],
+  "majorDeviations": ["..."],
+  "rootCauses": ["..."],
+  "adjustments": ["..."],
+  "effectiveActions": ["..."],
+  "ineffectiveActions": ["..."],
+  "principles": ["..."],
+  "nextTimeSuggestions": ["..."]
+}`;
+}
+
+/**
+ * 目标原则沉淀
+ * 根据目标结案报告，提炼可复用的经验原则。
+ */
+export function buildPrincipleExtractionPrompt(goal: Goal, report: GoalFinalReport): string {
+  return `你是 ReflectFlow 的原则沉淀教练。
+请根据以下目标结案报告，提炼可复用的经验原则。
+
+目标：${JSON.stringify(goal, null, 2)}
+结案报告：${JSON.stringify(report, null, 2)}
+
+请输出以下 JSON：
+{
+  "principles": [
+    {
+      "principleTitle": "...",
+      "principleContent": "...",
+      "sourceEvidence": ["..."],
+      "applicableScenarios": ["..."],
+      "boundaryConditions": ["..."],
+      "counterExamples": ["..."],
+      "confidence": "low" | "medium" | "high"
     }
   ]
 }`;
