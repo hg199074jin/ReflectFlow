@@ -10,6 +10,7 @@ import {
   buildWeeklyGoalReviewPrompt,
   buildGoalFinalReportPrompt,
   buildPrincipleExtractionPrompt,
+  buildPremortemPrompt,
 } from '../lib/goalPrompts';
 import type { LLMSettings } from './llm/types';
 import type { Goal, GoalPlan, GoalFinalReport, DailyGoalTarget, GapReason } from '../lib/schema';
@@ -381,4 +382,37 @@ export async function extractGoalPrinciples(
   if (error) return { success: false, raw: fullText, error: error.message };
 
   return parseAIJSON<PrincipleExtractionResult>(fullText, principleExtractionResultSchema);
+}
+
+// ---------------------------------------------------------------------------
+// 9. generatePremortem
+// ---------------------------------------------------------------------------
+
+const premortemResultSchema = z.object({
+  predictedFailureReasons: z.array(z.string()),
+  underestimatedConstraints: z.array(z.string()),
+  likelyDelays: z.array(z.string()),
+  triggerConditions: z.array(z.string()),
+  minimumViablePath: z.string(),
+});
+export type PremortemResult = z.infer<typeof premortemResultSchema>;
+
+/**
+ * Call AI to generate a premortem analysis for a goal.
+ */
+export async function generatePremortem(
+  goal: Goal,
+  settings: LLMSettings,
+  options?: { signal?: AbortSignal },
+): Promise<GoalAIResult<PremortemResult>> {
+  const userPrompt = buildPremortemPrompt(goal);
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a helpful premortem analysis coach. Always respond with valid JSON only.' },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const { fullText, error } = await collectStream(messages, settings, options?.signal);
+  if (error) return { success: false, raw: fullText, error: error.message };
+
+  return parseAIJSON<PremortemResult>(fullText, premortemResultSchema);
 }

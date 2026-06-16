@@ -388,3 +388,24 @@ export function buildPrincipleExtractionPrompt(goal: Goal, report: GoalFinalRepo
   ]
 }`;
 }
+
+/**
+ * 事前推演
+ * 根据目标信息，预测可能失败的原因、低估的约束、可能的延迟、触发条件和最小可行路径。
+ */
+export function buildPremortemPrompt(goal: Goal): string {
+  return `你是 ReflectFlow 的事前推演教练。
+请根据以下目标，预测可能失败的原因、低估的约束、可能的延迟、触发条件和最小可行路径。
+
+目标信息：
+${JSON.stringify(goal, null, 2)}
+
+请输出以下 JSON：
+{
+  "predictedFailureReasons": ["..."],
+  "underestimatedConstraints": ["..."],
+  "likelyDelays": ["..."],
+  "triggerConditions": ["..."],
+  "minimumViablePath": "..."
+}`;
+}

@@ -9,6 +9,7 @@ import { GoalDefinitionPanel } from './GoalDefinitionPanel';
 import { GoalPlanPanel } from './GoalPlanPanel';
 import { GoalQualityScoreCard } from './GoalQualityScoreCard';
 import { GoalFinalReportView } from './GoalFinalReportView';
+import { GoalPremortemPanel } from './GoalPremortemPanel';
 import { RiskWarningBanner } from './RiskWarningBanner';
 import type { Goal, GoalPeriod, GoalStatus } from '../../lib/schema';
 
@@ -120,6 +121,7 @@ export function GoalEditor({ goal, onClose }: GoalEditorProps) {
         </div>
         {goal && (
           <div className="goal-ai-panels">
+            <GoalPremortemPanel goal={goal} />
             <RiskWarningBanner goal={goal} />
             <GoalDefinitionPanel goal={goal} />
             <GoalPlanPanel goal={goal} />

@@ -14,6 +14,8 @@ import { InsightsView } from './features/insights/InsightsView';
 import { ReviewCasesView } from './features/reviewCases/ReviewCasesView';
 import { PreviewPlansView } from './features/preview/PreviewPlansView';
 import { PrinciplesView } from './features/principles/PrinciplesView';
+import { DashboardView } from './features/dashboard/DashboardView';
+import { CoachPanel } from './features/coach/CoachPanel';
 import { SearchView } from './components/views/SearchView';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { ExportDialog } from './components/dialogs/ExportDialog';
@@ -83,11 +85,13 @@ export default function App() {
     { key: 'stats', label: '统计' },
     { key: 'review', label: '复盘' },
     { key: 'goals', label: '目标' },
+    { key: 'dashboard', label: '总览' },
     { key: 'preview', label: '事前沙盘' },
     { key: 'reports', label: '报告' },
     { key: 'insights', label: '洞察' },
     { key: 'reviews', label: '复盘案例' },
     { key: 'principles', label: '原则库' },
+    { key: 'coach', label: 'AI 教练' },
     { key: 'search', label: '搜索' },
   ];
 
@@ -155,11 +159,13 @@ export default function App() {
               </div>
             )}
             {view === 'goals' && <GoalsView />}
+            {view === 'dashboard' && <DashboardView />}
             {view === 'preview' && <PreviewPlansView />}
             {view === 'reports' && <ReportsView />}
             {view === 'insights' && <InsightsView />}
             {view === 'reviews' && <ReviewCasesView />}
             {view === 'principles' && <PrinciplesView />}
+            {view === 'coach' && <CoachPanel />}
             {view === 'search' && <SearchView />}
           </div>
         </>
